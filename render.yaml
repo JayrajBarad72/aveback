@@ -17,6 +17,8 @@ services:
         value: "465"
       - key: ZOHO_EMAIL
         value: sales@aventrixtechnologies.com
+      - key: ZOHO_EMAIL_PASSWORD
+        value: Jasy@7272
       - key: ZOHO_APP_PASSWORD
         value: your_zeptomail_token_here
       - key: HUNTER_API_KEY

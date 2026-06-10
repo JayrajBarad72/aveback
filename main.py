@@ -130,6 +130,24 @@ def get_activity(db: DBSession = Depends(get_db)):
 def get_briefing():
     ceo = CEOAgent(); b = ceo.generate_briefing(); ceo.close(); return {"briefing": b}
 
+@app.post("/api/ceo/run-brain")
+def run_ceo_brain():
+    """Manually trigger full CEO brain cycle"""
+    try:
+        from agents.ceo_brain import CEOBrain
+        ceo = CEOBrain()
+        result = ceo.run_full_brain_cycle()
+        ceo.close()
+        return {"success": True, "result": {
+            "briefing": result.get("briefing",""),
+            "analysis": result.get("analysis",{}),
+            "auto_decisions": result.get("auto_decisions",[]),
+            "escalated_to_jayraj": result.get("escalated_to_jayraj",0),
+            "reflection": result.get("reflection",{})
+        }}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @app.get("/api/ceo/priorities")
 def get_priorities():
     ceo = CEOAgent(); p = ceo.generate_priorities(); ceo.close(); return {"priorities": p}
@@ -402,6 +420,71 @@ def list_backups():
     files = sorted(os.listdir(backup_dir), reverse=True)
     return {"backups": [{"file": f, "size": os.path.getsize(os.path.join(backup_dir, f))} for f in files[:10]]}
 
+
+
+# ── Inbox Agent ───────────────────────────────────────────
+@app.post("/api/inbox/check")
+def check_inbox():
+    """Manually trigger inbox check"""
+    try:
+        from agents.inbox_agent import InboxAgent
+        agent = InboxAgent()
+        result = agent.run_inbox_cycle()
+        agent.close()
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+# ── LinkedIn Agent ────────────────────────────────────────
+@app.get("/api/linkedin/messages/{industry}")
+def get_linkedin_messages(industry: str):
+    from agents.linkedin_agent import LinkedInAgent
+    agent = LinkedInAgent()
+    messages = agent.generate_batch_messages(industry, limit=10)
+    agent.close()
+    return {"messages": messages}
+
+@app.get("/api/linkedin/connect/{lead_id}")
+def get_connection_message(lead_id: int):
+    from agents.linkedin_agent import LinkedInAgent
+    agent = LinkedInAgent()
+    msg = agent.generate_connection_request(lead_id)
+    agent.close()
+    return {"message": msg}
+
+# ── Cross-Agent Coordinator ───────────────────────────────
+@app.post("/api/coordinator/run")
+def run_coordinator():
+    from agents.cross_agent_coordinator import CrossAgentCoordinator
+    coord = CrossAgentCoordinator()
+    actions = coord.coordinate_daily()
+    coord.close()
+    return {"actions": actions}
+
+@app.get("/api/coordinator/intelligence")
+def get_intelligence():
+    from agents.cross_agent_coordinator import CrossAgentCoordinator
+    coord = CrossAgentCoordinator()
+    report = coord.generate_company_intelligence_report()
+    coord.close()
+    return report
+
+# ── Update .env endpoint for Zoho IMAP ───────────────────
+@app.get("/api/inbox/test-connection")
+def test_inbox_connection():
+    try:
+        from agents.inbox_agent import InboxAgent
+        agent = InboxAgent()
+        mail = agent.connect_imap()
+        if mail:
+            mail.logout()
+            agent.close()
+            return {"success": True, "message": "Connected to sales@ inbox successfully"}
+        agent.close()
+        return {"success": False, "message": "Could not connect to inbox"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8010, reload=True)
@@ -572,9 +655,12 @@ def test_whatsapp():
     from whatsapp import notify_important_update
     success = notify_important_update(
         "Test Message from Alex",
-        "Hi Jayraj Barad! This is Alex, your AI CEO. Twilio WhatsApp is connected and working perfectly. Your AI company Aventrix Technologies is running autonomously. SecureAI Gateway is ready to sell! 🚀"
+        "Hi Jayraj Barad! This is Alex, your AI CEO. WhatsApp is working! Aventrix Technologies AI company is running autonomously. SecureAI Gateway is ready to sell!"
     )
-    return {"success": success}
+    if success:
+        return {"success": True, "message": "WhatsApp sent successfully"}
+    else:
+        return {"success": False, "message": "Twilio error — check Render logs"}
 
 
 # ── Supabase Keep-Alive (prevents free tier pause) ────────

@@ -1,39 +1,39 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from agents.ceo_agent import CEOAgent
-from agents.scout_agent import ScoutAgent
-from agents.outreach_agent import OutreachAgent
-from agents.all_agents import QualifierAgent, BlogWriterAgent, RnDAgent
-from agents.new_agents import FollowUpAgent, SocialCalendarAgent
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("scheduler")
 scheduler = BackgroundScheduler()
 
-def morning_briefing_job():
-    logger.info("CEO: Morning briefing...")
+def ceo_brain_cycle():
+    """Full CEO brain cycle — runs at 8 AM IST (2:30 AM UTC)"""
+    logger.info("CEO Brain: Starting full autonomous cycle...")
     try:
-        from agents.autonomous_agents import CEOAlex
-        ceo = CEOAlex()
-        result = ceo.run_daily_orchestration()
+        from agents.ceo_brain import CEOBrain
+        ceo = CEOBrain()
+        result = ceo.run_full_brain_cycle()
         ceo.close()
-        logger.info(f"CEO orchestration done. Escalated to Jayraj: {result.get('escalated_to_jayraj',0)}")
+        logger.info(f"CEO Brain complete. Escalated to Jayraj: {result.get('escalated_to_jayraj',0)}")
     except Exception as e:
-        logger.error(f"CEO orchestration error: {e}")
-        # Fallback to basic briefing
+        logger.error(f"CEO Brain error: {e}")
+        # Fallback — send basic WhatsApp
         try:
-            ceo = CEOAgent()
-            ceo.generate_briefing()
-            ceo.close()
+            from whatsapp import notify_important_update
+            notify_important_update("CEO Morning Update",
+                f"Good morning Jayraj! Alex here. Running company operations. Will update you shortly.")
         except: pass
 
 def lead_generation_job():
     logger.info("Scout: Finding leads...")
     try:
+        from agents.scout_agent import ScoutAgent
         scout = ScoutAgent()
         for industry in ["IT", "Healthcare", "Finance", "R&D"]:
-            scout.search_leads(industry, count=5)
+            try:
+                scout.search_leads(industry, count=5)
+            except Exception as e:
+                logger.error(f"Scout {industry} error: {e}")
         scout.close()
         logger.info("Lead generation done")
     except Exception as e:
@@ -42,6 +42,7 @@ def lead_generation_job():
 def outreach_job():
     logger.info("Outreach: Sending emails...")
     try:
+        from agents.outreach_agent import OutreachAgent
         outreach = OutreachAgent()
         result = outreach.run_daily_outreach(limit=20)
         outreach.close()
@@ -52,45 +53,36 @@ def outreach_job():
 def qualification_job():
     logger.info("Qualifier: Scoring leads...")
     try:
+        from agents.all_agents import QualifierAgent
         qualifier = QualifierAgent()
-        result = qualifier.run_qualification()
+        qualifier.run_qualification()
         qualifier.close()
-        logger.info(f"Qualification done: {result}")
     except Exception as e:
         logger.error(f"Qualification error: {e}")
 
 def followup_job():
     logger.info("Follow-up: Running sequences...")
     try:
+        from agents.new_agents import FollowUpAgent
         agent = FollowUpAgent()
-        result = agent.run_pending_followups()
+        agent.run_pending_followups()
         agent.close()
-        logger.info(f"Follow-ups done: {result}")
     except Exception as e:
         logger.error(f"Follow-up error: {e}")
 
 def blog_writing_job():
     logger.info("Blog Writer: Writing post...")
     try:
+        from agents.all_agents import BlogWriterAgent
         writer = BlogWriterAgent()
         writer.write_blog_post()
         writer.close()
-        logger.info("Blog post written")
     except Exception as e:
         logger.error(f"Blog error: {e}")
 
-def rnd_job():
-    logger.info("R&D: Researching...")
-    try:
-        rnd = RnDAgent()
-        rnd.research_competitors()
-        rnd.close()
-        logger.info("R&D done")
-    except Exception as e:
-        logger.error(f"R&D error: {e}")
-
 def sales_reflection_job():
-    logger.info("Sales Manager: Self-reflecting...")
+    """Sales self-reflection — 6 PM IST"""
+    logger.info("Sales: Self-reflecting...")
     try:
         from agents.autonomous_agents import AutonomousSalesManager
         mgr = AutonomousSalesManager()
@@ -99,29 +91,64 @@ def sales_reflection_job():
     except Exception as e:
         logger.error(f"Sales reflection error: {e}")
 
-def start_scheduler():
-    # CEO orchestration — 8 AM daily (runs all departments + WhatsApps Jayraj)
-    scheduler.add_job(morning_briefing_job, CronTrigger(hour=8, minute=0), id="ceo_orchestration")
-    # Lead generation — 9 AM daily
-    scheduler.add_job(lead_generation_job, CronTrigger(hour=9, minute=0), id="lead_generation")
-    # Outreach — 10 AM daily
-    scheduler.add_job(outreach_job, CronTrigger(hour=10, minute=0), id="outreach")
-    # Qualification — 11 AM daily
-    scheduler.add_job(qualification_job, CronTrigger(hour=11, minute=0), id="qualification")
-    # Follow-ups — 12 PM daily
-    scheduler.add_job(followup_job, CronTrigger(hour=12, minute=0), id="followups")
-    # Sales reflection — 6 PM daily
-    scheduler.add_job(sales_reflection_job, CronTrigger(hour=18, minute=0), id="sales_reflection")
-    # Blog writing — Mon & Thu 2 PM
-    scheduler.add_job(blog_writing_job, CronTrigger(day_of_week="mon,thu", hour=14, minute=0), id="blog")
-    # R&D — Sunday 10 AM
-    scheduler.add_job(rnd_job, CronTrigger(day_of_week="sun", hour=10, minute=0), id="rnd")
+def keepalive_job():
+    """Keep Supabase alive"""
+    try:
+        from database import SessionLocal
+        from sqlalchemy import text
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        logger.info("Supabase keepalive OK")
+    except Exception as e:
+        logger.error(f"Keepalive error: {e}")
 
-    # Supabase keep-alive — ping every 5 days to prevent pause
-    scheduler.add_job(
-        lambda: __import__('requests').get('https://aventrix-api.onrender.com/api/ping', timeout=10),
-        'interval', days=5, id="supabase_keepalive"
-    )
+def inbox_check_job():
+    """Read inbox every 30 min — auto-reply to leads"""
+    logger.info("Inbox: Checking emails...")
+    try:
+        from agents.inbox_agent import InboxAgent
+        agent = InboxAgent()
+        result = agent.run_inbox_cycle()
+        agent.close()
+        logger.info(f"Inbox done: {result}")
+    except Exception as e:
+        logger.error(f"Inbox error: {e}")
+
+def cross_agent_job():
+    """Cross-agent coordination — agents share intelligence"""
+    logger.info("Coordinator: Running cross-agent coordination...")
+    try:
+        from agents.cross_agent_coordinator import CrossAgentCoordinator
+        coord = CrossAgentCoordinator()
+        actions = coord.coordinate_daily()
+        coord.close()
+        logger.info(f"Coordination done: {len(actions)} actions")
+    except Exception as e:
+        logger.error(f"Coordinator error: {e}")
+
+def start_scheduler():
+    # CEO Full Brain — 8 AM IST = 2:30 AM UTC
+    scheduler.add_job(ceo_brain_cycle, CronTrigger(hour=2, minute=30), id="ceo_brain")
+    # Lead Generation — 9 AM IST = 3:30 AM UTC
+    scheduler.add_job(lead_generation_job, CronTrigger(hour=3, minute=30), id="leads")
+    # Outreach — 10 AM IST = 4:30 AM UTC
+    scheduler.add_job(outreach_job, CronTrigger(hour=4, minute=30), id="outreach")
+    # Qualification — 11 AM IST = 5:30 AM UTC
+    scheduler.add_job(qualification_job, CronTrigger(hour=5, minute=30), id="qualify")
+    # Follow-ups — 12 PM IST = 6:30 AM UTC
+    scheduler.add_job(followup_job, CronTrigger(hour=6, minute=30), id="followup")
+    # Sales Reflection — 6 PM IST = 12:30 PM UTC
+    scheduler.add_job(sales_reflection_job, CronTrigger(hour=12, minute=30), id="reflection")
+    # Blog — Mon & Thu 2 PM IST = 8:30 AM UTC
+    scheduler.add_job(blog_writing_job, CronTrigger(day_of_week="mon,thu", hour=8, minute=30), id="blog")
+    # Inbox check — every 30 minutes
+    scheduler.add_job(inbox_check_job, "interval", minutes=30, id="inbox")
+    # Cross-agent coordination — 7:30 AM IST (2 AM UTC) — before CEO briefing
+    scheduler.add_job(cross_agent_job, CronTrigger(hour=2, minute=0), id="coordinator")
+    # Supabase keepalive — every 5 days
+    scheduler.add_job(keepalive_job, "interval", days=5, id="keepalive")
+
     scheduler.start()
-    logger.info("✅ Scheduler started — all autonomous agents on schedule")
+    logger.info("✅ All agents scheduled on IST timezone")
     return scheduler

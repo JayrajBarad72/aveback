@@ -472,18 +472,21 @@ def get_intelligence():
 # ── Update .env endpoint for Zoho IMAP ───────────────────
 @app.get("/api/inbox/test-connection")
 def test_inbox_connection():
-    try:
-        from agents.inbox_agent import InboxAgent
-        agent = InboxAgent()
-        mail = agent.connect_imap()
-        if mail:
+    import imaplib
+    import ssl
+    results = []
+    hosts = ["imappro.zoho.in", "imap.zoho.in", "imap.zoho.com"]
+    email_addr = os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com")
+    password = os.getenv("ZOHO_EMAIL_PASSWORD", "")
+    for host in hosts:
+        try:
+            mail = imaplib.IMAP4_SSL(host, 993)
+            mail.login(email_addr, password)
             mail.logout()
-            agent.close()
-            return {"success": True, "message": "Connected to sales@ inbox successfully"}
-        agent.close()
-        return {"success": False, "message": "Could not connect to inbox"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+            return {"success": True, "message": f"Connected via {host}", "host": host}
+        except Exception as e:
+            results.append({"host": host, "error": str(e)})
+    return {"success": False, "message": "All hosts failed", "details": results}
 
 if __name__ == "__main__":
     import uvicorn

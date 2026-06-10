@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: aventrix-api
+    env: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://postgres:Jaymogal@72@db.yzrefqcbpfskncwnbapp.supabase.co:5432/postgres
+      - key: ANTHROPIC_API_KEY
+        value: your_anthropic_api_key_here
+      - key: ZOHO_SMTP_HOST
+        value: smtp.zeptomail.in
+      - key: ZOHO_SMTP_PORT
+        value: "465"
+      - key: ZOHO_EMAIL
+        value: sales@aventrixtechnologies.com
+      - key: ZOHO_APP_PASSWORD
+        value: your_zeptomail_token_here
+      - key: HUNTER_API_KEY
+        value: beb5cd3914af45403b8b788eb367d0f7249c9561
+      - key: APOLLO_API_KEY
+        value: CSGmTSOwvtWrYEuRG8euiw
+      - key: CALLMEBOT_API_KEY
+        value: your_callmebot_api_key_here
+      - key: JAYRAJ_WHATSAPP
+        value: "+919104277272"
+      - key: ADMIN_PASSWORD
+        value: aventrix2024
+      - key: FOUNDER_NAME
+        value: Jayraj Barad
+      - key: CEO_NAME
+        value: Alex

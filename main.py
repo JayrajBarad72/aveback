@@ -672,3 +672,82 @@ def ping(db: DBSession = Depends(get_db)):
     """Keeps Supabase DB alive — called every 5 days by scheduler"""
     db.execute(__import__('sqlalchemy').text("SELECT 1"))
     return {"status": "alive", "time": str(datetime.utcnow())}
+
+
+# ── Website Contact Form ──────────────────────────────────
+@app.post("/api/contact")
+async def submit_contact(request: Request, db: DBSession = Depends(get_db)):
+    """Receives contact form from website, saves to DB and emails sales@"""
+    import smtplib, ssl
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    data = await request.json()
+    name = data.get("name","")
+    company = data.get("company","")
+    email = data.get("email","")
+    phone = data.get("phone","")
+    size = data.get("company_size","")
+    industry = data.get("industry","")
+    interest = data.get("interest","")
+    message = data.get("message","")
+
+    # Save to agent log
+    db.add(AgentLog(
+        agent_name="Website",
+        action="contact_form",
+        result=f"New lead: {name} from {company} ({email})",
+        status="success",
+        created_at=datetime.utcnow()
+    ))
+    db.commit()
+
+    # Send email notification to sales@
+    try:
+        smtp_host = os.getenv("ZOHO_SMTP_HOST","smtp.zeptomail.in")
+        smtp_port = int(os.getenv("ZOHO_SMTP_PORT",465))
+        from_email = os.getenv("ZOHO_EMAIL","sales@aventrixtechnologies.com")
+        app_password = os.getenv("ZOHO_APP_PASSWORD","")
+
+        msg = MIMEMultipart()
+        msg["Subject"] = f"🔥 New Lead: {name} from {company}"
+        msg["From"] = from_email
+        msg["To"] = from_email
+        body = f"""New contact form submission from aventrixtechnologies.com
+
+Name: {name}
+Company: {company}
+Email: {email}
+Phone: {phone}
+Company Size: {size}
+Industry: {industry}
+Interested In: {interest}
+Message: {message}
+
+---
+Reply to: {email}
+"""
+        msg.attach(MIMEText(body,"plain"))
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx) as server:
+            server.login("emailapikey", app_password)
+            server.sendmail(from_email, from_email, msg.as_string())
+    except Exception as e:
+        print(f"Email notification error: {e}")
+
+    # Also WhatsApp Jayraj for new lead
+    try:
+        from whatsapp import notify_important_update
+        notify_important_update(
+            "New Website Lead",
+            f"Name: {name}\nCompany: {company}\nEmail: {email}\nIndustry: {industry}\nInterested in: {interest}"
+        )
+    except Exception as e:
+        print(f"WhatsApp notification error: {e}")
+
+    return {"success": True, "message": "Thank you! We will contact you within 24 hours."}
+
+@app.get("/api/blog/posts")
+def get_blog_posts(limit: int = 6, db: DBSession = Depends(get_db)):
+    posts = db.query(BlogPost).order_by(BlogPost.created_at.desc()).limit(limit).all()
+    return {"posts": [{"id":p.id,"title":p.title,"content":p.content,"keywords":p.keywords,"created_at":str(p.created_at)} for p in posts]}

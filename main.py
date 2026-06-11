@@ -676,13 +676,12 @@ def ping(db: DBSession = Depends(get_db)):
 
 # ── Website Contact Form ──────────────────────────────────
 @app.post("/api/contact")
-async def submit_contact(request: Request, db: DBSession = Depends(get_db)):
-    """Receives contact form from website, saves to DB and emails sales@"""
-    import smtplib, ssl
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
-
-    data = await request.json()
+async def submit_contact(request: Request, background_tasks: BackgroundTasks, db: DBSession = Depends(get_db)):
+    """Receives contact form — saves to DB instantly, notifies in background"""
+    try:
+        data = await request.json()
+    except Exception:
+        return {"success": False, "message": "Invalid request"}
     name = data.get("name","")
     company = data.get("company","")
     email = data.get("email","")
@@ -692,23 +691,32 @@ async def submit_contact(request: Request, db: DBSession = Depends(get_db)):
     interest = data.get("interest","")
     message = data.get("message","")
 
-    # Save to agent log
-    db.add(AgentLog(
-        agent_name="Website",
-        action="contact_form",
-        result=f"New lead: {name} from {company} ({email})",
-        status="success",
-        created_at=datetime.utcnow()
-    ))
-    db.commit()
+    try:
+        db.add(AgentLog(
+            agent_name="Website",
+            action="contact_form",
+            result=f"New lead: {name} from {company} ({email}) | {phone} | {size} | {industry} | {interest} | {message[:200]}",
+            status="success",
+            created_at=datetime.utcnow()
+        ))
+        db.commit()
+    except Exception as e:
+        print(f"Contact DB error: {e}")
 
-    # Send email notification to sales@
+    background_tasks.add_task(_notify_contact, name, company, email, phone, size, industry, interest, message)
+    return {"success": True, "message": "Thank you! We will contact you within 24 hours."}
+
+
+def _notify_contact(name, company, email, phone, size, industry, interest, message):
+    """Background: email sales@ + WhatsApp Jayraj"""
+    import smtplib, ssl
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
     try:
         smtp_host = os.getenv("ZOHO_SMTP_HOST","smtp.zeptomail.in")
         smtp_port = int(os.getenv("ZOHO_SMTP_PORT",465))
         from_email = os.getenv("ZOHO_EMAIL","sales@aventrixtechnologies.com")
         app_password = os.getenv("ZOHO_APP_PASSWORD","")
-
         msg = MIMEMultipart()
         msg["Subject"] = f"🔥 New Lead: {name} from {company}"
         msg["From"] = from_email
@@ -729,25 +737,17 @@ Reply to: {email}
 """
         msg.attach(MIMEText(body,"plain"))
         ctx = ssl.create_default_context()
-        with smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx) as server:
+        with smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx, timeout=30) as server:
             server.login("emailapikey", app_password)
             server.sendmail(from_email, from_email, msg.as_string())
+        print(f"Contact email sent for {email}")
     except Exception as e:
         print(f"Email notification error: {e}")
-
-    # Also WhatsApp Jayraj for new lead
     try:
         from whatsapp import notify_important_update
         notify_important_update(
             "New Website Lead",
-            f"Name: {name}\nCompany: {company}\nEmail: {email}\nIndustry: {industry}\nInterested in: {interest}"
+            f"Name: {name}\nCompany: {company}\nEmail: {email}\nPhone: {phone}\nIndustry: {industry}\nInterested in: {interest}"
         )
     except Exception as e:
         print(f"WhatsApp notification error: {e}")
-
-    return {"success": True, "message": "Thank you! We will contact you within 24 hours."}
-
-@app.get("/api/blog/posts")
-def get_blog_posts(limit: int = 6, db: DBSession = Depends(get_db)):
-    posts = db.query(BlogPost).order_by(BlogPost.created_at.desc()).limit(limit).all()
-    return {"posts": [{"id":p.id,"title":p.title,"content":p.content,"keywords":p.keywords,"created_at":str(p.created_at)} for p in posts]}

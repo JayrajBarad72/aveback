@@ -708,20 +708,23 @@ async def submit_contact(request: Request, background_tasks: BackgroundTasks, db
 
 
 def _notify_contact(name, company, email, phone, size, industry, interest, message):
-    """Background: email sales@ + WhatsApp Jayraj"""
+    """Background: email + WhatsApp Jayraj"""
     import smtplib, ssl
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
+    smtp_host = os.getenv("ZOHO_SMTP_HOST","smtp.zeptomail.in")
+    smtp_port = int(os.getenv("ZOHO_SMTP_PORT",465))
+    from_email = os.getenv("ZOHO_EMAIL","sales@aventrixtechnologies.com")
+    app_password = os.getenv("ZOHO_APP_PASSWORD","")
+    recipients = ["jayraj727@gmail.com", "sales@aventrixtechnologies.com"]
+    print(f"[CONTACT] SMTP {smtp_host}:{smtp_port} | from={from_email} | pw={'SET' if app_password else 'MISSING'}")
     try:
-        smtp_host = os.getenv("ZOHO_SMTP_HOST","smtp.zeptomail.in")
-        smtp_port = int(os.getenv("ZOHO_SMTP_PORT",465))
-        from_email = os.getenv("ZOHO_EMAIL","sales@aventrixtechnologies.com")
-        app_password = os.getenv("ZOHO_APP_PASSWORD","")
         msg = MIMEMultipart()
-        msg["Subject"] = f"🔥 New Lead: {name} from {company}"
-        msg["From"] = from_email
-        msg["To"] = from_email
-        body = f"""New contact form submission from aventrixtechnologies.com
+        msg["Subject"] = f"New Lead: {name} from {company} — SecureAI Website"
+        msg["From"] = f"SecureAI Gateway <{from_email}>"
+        msg["To"] = ", ".join(recipients)
+        msg["Reply-To"] = email
+        body = f"""New contact form — aventrixtechnologies.com
 
 Name: {name}
 Company: {company}
@@ -732,22 +735,22 @@ Industry: {industry}
 Interested In: {interest}
 Message: {message}
 
----
-Reply to: {email}
+Reply-To: {email}
 """
-        msg.attach(MIMEText(body,"plain"))
+        msg.attach(MIMEText(body, "plain"))
         ctx = ssl.create_default_context()
         with smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx, timeout=30) as server:
             server.login("emailapikey", app_password)
-            server.sendmail(from_email, from_email, msg.as_string())
-        print(f"Contact email sent for {email}")
+            server.sendmail(from_email, recipients, msg.as_string())
+        print(f"[CONTACT] Email sent to {recipients}")
     except Exception as e:
-        print(f"Email notification error: {e}")
+        print(f"[CONTACT] Email FAILED: {e}")
     try:
         from whatsapp import notify_important_update
         notify_important_update(
             "New Website Lead",
-            f"Name: {name}\nCompany: {company}\nEmail: {email}\nPhone: {phone}\nIndustry: {industry}\nInterested in: {interest}"
+            f"Name: {name}\nCompany: {company}\nEmail: {email}\nPhone: {phone}\nIndustry: {industry}\nInterest: {interest}"
         )
+        print("[CONTACT] WhatsApp sent")
     except Exception as e:
-        print(f"WhatsApp notification error: {e}")
+        print(f"[CONTACT] WhatsApp FAILED: {e}")

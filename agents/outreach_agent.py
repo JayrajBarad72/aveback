@@ -60,7 +60,7 @@ Return JSON only: {{"subject":"...","body":"..."}}
 
         lead_dict = {
             "company": lead.company,
-            "contact_name": lead.contact_name,
+            "contact_name": lead.contact_name or lead.contact_name or "there",
             "title": "",
             "email": lead.email,
             "industry": lead.industry,
@@ -73,7 +73,7 @@ Return JSON only: {{"subject":"...","body":"..."}}
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = email_content["subject"]
-            msg["From"]    = f"Jayraj Shah <{self.email}>"
+            msg["From"]    = f"SecureAI Gateway Team <{self.email}>"
             msg["To"]      = lead.email
             msg["Reply-To"] = self.email
 
@@ -143,7 +143,7 @@ Return JSON only: {{"subject":"...","body":"..."}}
             return {}
         lead_dict = {
             "company": lead.company,
-            "contact_name": lead.contact_name,
+            "contact_name": lead.contact_name or lead.contact_name or "there",
             "email": lead.email,
             "industry": lead.industry,
             "country": lead.country,

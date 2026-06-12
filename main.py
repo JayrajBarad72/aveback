@@ -745,3 +745,72 @@ async def submit_contact(request: Request):
         return {"success": True, "message": "Received"}  # Always return success to frontend
 
 # Force redeploy Fri Jun 12 07:55:35 UTC 2026
+
+
+# ── Fix 1: Scout Run Endpoint ─────────────────────────────
+@app.post("/api/scout/run")
+async def run_scout_endpoint(background_tasks: BackgroundTasks, industry: str = "all"):
+    def _run():
+        try:
+            from agents.scout_agent import ScoutAgent
+            scout = ScoutAgent()
+            if industry == "all":
+                result = scout.run_full_scout()
+            else:
+                leads = scout.search_leads(industry, count=10)
+                saved = scout.score_and_save_leads(leads, industry)
+                result = {"found": len(leads), "saved": saved}
+            scout.close()
+            print(f"[SCOUT] Done: {result}")
+        except Exception as e:
+            print(f"[SCOUT] Error: {e}")
+    background_tasks.add_task(_run)
+    return {"success": True, "message": f"Scout started for {industry}. Check leads in 2-3 minutes."}
+
+
+# ── Fix 2: Email Preview Endpoint ────────────────────────
+@app.get("/api/outreach/preview/{lead_id}")
+def preview_outreach_email(lead_id: int, db: DBSession = Depends(get_db)):
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        return {"error": "Lead not found"}
+    try:
+        from agents.outreach_agent import OutreachAgent
+        agent = OutreachAgent()
+        lead_dict = {
+            "company": lead.company,
+            "contact_name": lead.contact_name,
+            "title": lead.notes.split("]")[0].replace("[","").strip() if lead.notes and "[" in lead.notes else "Decision Maker",
+            "email": lead.email,
+            "industry": lead.industry,
+            "country": lead.country or "Global",
+            "notes": lead.notes or ""
+        }
+        email = agent.generate_email(lead_dict)
+        agent.close()
+        return {"lead": lead.contact_name, "company": lead.company, "email": email}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ── Fix 3: WhatsApp Status Check ─────────────────────────
+@app.get("/api/whatsapp/status")
+def whatsapp_status():
+    from whatsapp import send_whatsapp
+    success = send_whatsapp("Aventrix HQ system check - all operational")
+    return {
+        "active": success,
+        "message": "WhatsApp working" if success else "Sandbox expired. Send 'join mix-who' to +14155238886"
+    }
+
+
+# ── Fix 4: All leads endpoint ────────────────────────────
+@app.get("/api/leads")
+def get_all_leads(db: DBSession = Depends(get_db)):
+    leads = db.query(Lead).order_by(Lead.score.desc()).all()
+    return {"leads": [
+        {"id": l.id, "name": l.contact_name, "company": l.company,
+         "email": l.email, "industry": l.industry, "status": l.status,
+         "score": l.score, "country": l.country, "created_at": str(l.created_at)}
+        for l in leads
+    ]}

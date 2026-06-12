@@ -691,6 +691,30 @@ def get_all_emails(db: DBSession = Depends(get_db)):
     return {"emails": [{"id":e.id,"lead_id":e.lead_id,"subject":e.subject,
             "status":e.status,"direction":e.direction,"sent_at":str(e.sent_at)} for e in emails]}
 
+
+
+@app.delete("/api/leads/cleanup")
+def cleanup_leads(db: DBSession = Depends(get_db)):
+    """Remove low quality leads and wrong company targets"""
+    bad_companies = [
+        "infosys", "wipro", "hcltech", "tech mahindra", "apollo hospitals",
+        "fortis", "sun pharma", "cipla", "hdfc bank", "icici bank",
+        "techmahindra", "hcl"
+    ]
+    all_leads = db.query(Lead).all()
+    deleted = 0
+    for lead in all_leads:
+        company_lower = (lead.company or "").lower()
+        is_bad_company = any(b in company_lower for b in bad_companies)
+        is_low_score = (lead.score or 0) < 60
+        is_wrong_title = any(t in (lead.notes or "").lower() for t in
+                            ["seo role", "hr role", "test engineer", "senior engineer"])
+        if is_bad_company or is_low_score or is_wrong_title:
+            db.delete(lead)
+            deleted += 1
+    db.commit()
+    return {"deleted": deleted, "message": f"Removed {deleted} low-quality leads"}
+
 @app.post("/api/contact")
 async def submit_contact(request: Request):
     """Website contact form — instant response, WhatsApp notify"""

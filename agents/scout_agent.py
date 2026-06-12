@@ -1,222 +1,277 @@
+"""
+Scout Agent — Finds qualified leads globally
+Target: Decision makers at 20-500 employee companies who actually buy AI security tools
+NOT: Big enterprises (Infosys, Wipro) or wrong departments (sales, HR, marketing)
+"""
 import json
-import os
 import requests
-from bs4 import BeautifulSoup
+import os
 from agents.base_agent import BaseAgent
-from database import Lead, Metric
+from database import Lead, SessionLocal
 from datetime import datetime
-from dotenv import load_dotenv
 
-load_dotenv()
+# ── WHO WE TARGET ─────────────────────────────────────────────────────────────
+# Company size: 20-500 employees (SMB sweet spot)
+# Geography: Global — US, UK, EU, Australia, Canada, Middle East, India SMBs
+# Industries: Any company handling sensitive data
 
-HUNTER_API_KEY = os.getenv("HUNTER_API_KEY")
-
-# Real target companies by industry — AI security buyers
 TARGET_COMPANIES = {
-    "IT": [
-        "infosys.com", "wipro.com", "hcltech.com", "techmahindra.com",
-        "mphasis.com", "hexaware.com", "mindtree.com", "persistent.com",
-        "zensar.com", "cyient.com", "niit.com", "mastech.com"
+    "Legal": [
+        # US law firms
+        "lathropgpm.com", "foxrothschild.com", "fisherphillips.com",
+        "grsm.com", "hklaw.com", "bclplaw.com", "seyfarth.com",
+        # UK law firms
+        "weightmans.com", "brownejacobson.com", "bevanbrittan.com",
+        # Australia
+        "maddocks.com.au", "corrs.com.au", "sparke.com.au",
+        # Canada
+        "mcmillan.ca", "dentons.com", "blakes.com",
     ],
     "Healthcare": [
-        "apollohospitals.com", "fortishealthcare.com", "manipalhospitals.com",
-        "narayanahealth.org", "maxhealthcare.in", "medanta.org",
-        "carehosp.com", "aartihospitals.com"
+        # US healthcare
+        "teamhealth.com", "envision.com", "acuity-healthcare.com",
+        "primedica.com", "mdvip.com", "concentra.com",
+        # UK
+        "spirehealthcare.com", "ramsayhealth.co.uk",
+        # Australia
+        "healthscope.com.au", "cabrini.com.au",
+        # Middle East
+        "mediclinic.ae", "nmc.ae", "aster.ae",
+        # India SMB (NOT large hospital chains)
+        "drreddys.com", "cloudninehospital.com",
     ],
     "Finance": [
-        "hdfcbank.com", "icicibank.com", "axisbank.com", "kotakbank.com",
-        "yesbank.in", "idfcfirstbank.com", "rblbank.com", "federalbank.co.in",
-        "bajajfinserv.in", "muthootfinance.com"
+        # US fintech/NBFC
+        "kabbage.com", "fundbox.com", "bluevine.com", "ondeck.com",
+        "greensky.com", "avant.com", "lendingclub.com",
+        # UK fintech
+        "oaknorth.com", "iwoca.co.uk", "funding-circle.com",
+        # Australia
+        "prospa.com.au", "moula.com.au", "spotcap.com",
+        # Middle East fintech
+        "beehive.finance", "liwwa.com", "capiter.com",
+        # India fintech SMB
+        "lendingkart.com", "neogrowth.in", "aye.finance",
     ],
-    "R&D": [
-        "drreddy.com", "sunpharma.com", "cipla.com", "lupin.com",
-        "biocon.com", "divis.in", "aurobindo.com", "torrentpharma.com"
+    "IT_SMB": [
+        # US IT consulting/MSP (50-300 employees)
+        "ntiva.com", "isg-one.com", "datalinknetworks.com",
+        "presidio.com", "cpurge.com", "logically.ai",
+        "clearnetwork.com", "stratospherenetworks.com",
+        # UK MSP
+        "pomeroy.com", "fordway.com", "littlefish.co.uk",
+        # Australia IT
+        "versent.com.au", "itoc.com.au", "empired.com",
+        # Canada IT
+        "sievert.ca", "compugen.com", "pythian.com",
+    ],
+    "Consulting": [
+        # US consulting (50-300 employees)
+        "propellergroup.com", "guidehouse.com", "navigant.com",
+        "chartis.com", "kpmg.com", "rsm.com", "plante.com",
+        # UK
+        "moorhouse.com", "pa.com", "clarasys.com",
+        # Australia
+        "kordamentha.com", "pitcher.com.au", "mcgrathnicol.com",
+    ],
+    "Manufacturing": [
+        # US mid-size manufacturers
+        "haynes.com", "materion.com", "insteel.com",
+        "aptargroup.com", "kaman.com", "watts.com",
+        # UK
+        "bodycote.com", "renold.com", "luxfer.com",
+        # Australia
+        "boral.com.au", "incitec.com.au", "orica.com",
     ]
 }
+
+# ── WHO IS A QUALIFIED LEAD (job title filter) ─────────────────────────────────
+QUALIFIED_TITLES = [
+    # C-Suite
+    "ceo", "cto", "ciso", "coo", "cio", "chief executive",
+    "chief technology", "chief information", "chief security", "chief operating",
+    # IT Leadership
+    "it manager", "it director", "it head", "head of it", "vp it",
+    "it infrastructure", "systems administrator", "sysadmin",
+    "network administrator", "it administrator",
+    # Security
+    "security manager", "security officer", "information security",
+    "cybersecurity", "compliance officer", "compliance manager",
+    "data protection", "dpo", "gdpr", "risk officer", "risk manager",
+    # Tech Leadership
+    "vp engineering", "director of engineering", "head of engineering",
+    "engineering manager", "technical director", "technology director",
+    # Founders
+    "founder", "co-founder", "managing director", "managing partner",
+    "owner", "president", "partner",
+    # Operations
+    "operations director", "operations manager", "head of operations",
+]
+
+# ── WHO IS NOT A QUALIFIED LEAD ────────────────────────────────────────────────
+DISQUALIFIED_TITLES = [
+    "sales", "marketing", "business development", "account executive",
+    "account manager", "recruiter", "hr ", "human resources",
+    "talent", "analyst", "associate", "intern", "coordinator",
+    "assistant", "receptionist", "secretary", "administrative",
+    "graphic", "designer", "copywriter", "social media",
+    "seo", "content", "customer success", "support",
+]
+
+def is_qualified_title(title: str) -> bool:
+    """Returns True if job title is a decision maker we want to target"""
+    if not title:
+        return False
+    title_lower = title.lower()
+
+    # Disqualify first
+    for bad in DISQUALIFIED_TITLES:
+        if bad in title_lower:
+            return False
+
+    # Qualify
+    for good in QUALIFIED_TITLES:
+        if good in title_lower:
+            return True
+
+    return False
+
 
 class ScoutAgent(BaseAgent):
     def __init__(self):
         super().__init__("Scout Agent", "Lead Finder")
+        self.hunter_key = os.getenv("HUNTER_API_KEY", "beb5cd3914af45403b8b788eb367d0f7249c9561")
 
-    def search_leads(self, industry: str, country: str = "global", count: int = 10) -> list:
-        self.log("search_leads", f"Searching {industry} companies")
+    def search_leads(self, industry: str, count: int = 10) -> list:
+        self.log("search_leads", f"Searching {industry} globally for decision makers")
         all_leads = []
+        companies = TARGET_COMPANIES.get(industry, [])
 
-        # 1. Hunter.io domain search on target companies
-        domains = TARGET_COMPANIES.get(industry, TARGET_COMPANIES["IT"])
-        self.log("hunter_search", f"Searching {len(domains)} domains via Hunter.io")
+        for domain in companies[:8]:  # Check 8 companies per industry
+            try:
+                url = "https://api.hunter.io/v2/domain-search"
+                params = {
+                    "domain": domain,
+                    "api_key": self.hunter_key,
+                    "limit": 10,
+                    "type": "personal"
+                }
+                resp = requests.get(url, params=params, timeout=15)
+                if resp.status_code != 200:
+                    continue
 
-        for domain in domains[:6]:
-            leads = self._hunter_domain_search(domain, industry)
-            all_leads.extend(leads)
-            if len(all_leads) >= count:
-                break
+                data = resp.json().get("data", {})
+                company_name = data.get("organization", domain.split(".")[0].title())
+                emails_found = data.get("emails", [])
 
-        # 2. If still not enough, use AI to generate realistic leads
-        if len(all_leads) < 3:
-            self.log("ai_fallback", "Using AI fallback for lead generation")
-            ai_leads = self._ai_generate_leads(industry, country, count)
-            all_leads.extend(ai_leads)
+                for e in emails_found:
+                    title = e.get("position", "") or ""
+                    first = e.get("first_name", "")
+                    last = e.get("last_name", "")
+                    email = e.get("value", "")
+                    confidence = e.get("confidence", 0)
 
-        # 3. AI score all leads
-        if all_leads:
-            all_leads = self._ai_score_leads(all_leads[:count], industry)
+                    # Filter: must be decision maker + high confidence email
+                    if not is_qualified_title(title):
+                        self.log("search_leads", f"Skipped {title} at {domain} — not decision maker")
+                        continue
 
-        # 4. Save to DB
-        saved = self._save_leads(all_leads[:count])
-        self.log("search_leads", f"Saved {saved} leads for {industry}", "success")
+                    if confidence < 70:
+                        self.log("search_leads", f"Skipped {email} — low confidence {confidence}%")
+                        continue
+
+                    all_leads.append({
+                        "company": company_name,
+                        "contact_name": f"{first} {last}".strip(),
+                        "title": title,
+                        "email": email,
+                        "industry": industry,
+                        "domain": domain,
+                        "confidence": confidence,
+                        "country": data.get("country", "Global"),
+                    })
+
+                if len(all_leads) >= count:
+                    break
+
+            except Exception as e:
+                self.log("search_leads", f"Hunter error for {domain}: {e}", "error")
+                continue
+
+        self.log("search_leads", f"Found {len(all_leads)} qualified decision makers in {industry}")
         return all_leads[:count]
 
-    def _hunter_domain_search(self, domain: str, industry: str) -> list:
-        try:
-            url = "https://api.hunter.io/v2/domain-search"
-            params = {
-                "domain": domain,
-                "api_key": HUNTER_API_KEY,
-                "limit": 5,
-                "type": "personal",
-                "seniority": "senior,executive"
-            }
-            resp = requests.get(url, params=params, timeout=12)
-            if resp.status_code != 200:
-                return []
-
-            data = resp.json()
-            company = data.get("data", {}).get("organization", domain.split(".")[0].title())
-            country = data.get("data", {}).get("country", "Global")
-            emails = data.get("data", {}).get("emails", [])
-
-            leads = []
-            for e in emails[:3]:
-                name = f"{e.get('first_name','')} {e.get('last_name','')}".strip()
-                if not name:
-                    continue
-                leads.append({
-                    "company": company,
-                    "contact_name": name,
-                    "email": e.get("value", ""),
-                    "title": e.get("position", ""),
-                    "industry": industry,
-                    "company_size": "200-1000",
-                    "country": country or "India",
-                    "website": f"https://{domain}",
-                    "source": "Hunter.io",
-                    "score": min(e.get("confidence", 70), 95),
-                    "notes": ""
-                })
-            return leads
-
-        except Exception as e:
-            self.log("hunter_domain", f"{domain}: {str(e)}", "error")
-            return []
-
-    def _ai_generate_leads(self, industry: str, country: str, count: int) -> list:
-        prompt = f"""
-Generate {count} realistic B2B leads for {industry} companies that would need SecureAI Gateway.
-SecureAI Gateway = Enterprise AI access control, DLP, usage monitoring for ChatGPT/Copilot/Claude.
-
-Requirements:
-- Real-sounding company names (mid-size, 100-1000 employees)
-- Decision maker titles: CTO, CISO, IT Manager, VP Technology, Head of IT
-- Realistic work emails matching company domain
-- Mix of countries: India, USA, UK, Singapore, UAE
-- Focus on companies actively using AI tools
-
-Return JSON array (exactly {min(count,8)} items):
-[{{
-  "company": "Acme Technologies",
-  "contact_name": "Rajesh Kumar",
-  "email": "rajesh.kumar@acmetech.com",
-  "title": "CTO",
-  "industry": "{industry}",
-  "company_size": "250-500",
-  "country": "India",
-  "website": "https://acmetech.com",
-  "source": "AI Research",
-  "score": 78,
-  "notes": "Specific reason why they need SecureAI Gateway"
-}}]
-Return only JSON array. Make data realistic and varied.
-"""
-        result = self.think(prompt)
-        try:
-            clean = result.replace("```json","").replace("```","").strip()
-            leads = json.loads(clean)
-            self.log("ai_generate", f"Generated {len(leads)} AI leads")
-            return leads
-        except Exception as e:
-            self.log("ai_generate", str(e), "error")
-            return []
-
-    def _ai_score_leads(self, leads: list, industry: str) -> list:
+    def score_and_save_leads(self, leads: list, industry: str) -> int:
+        """Score leads with AI and save to DB"""
         if not leads:
-            return []
-        try:
-            leads_data = [{"i":i,"company":l.get("company"),"title":l.get("title",""),"size":l.get("company_size",""),"country":l.get("country","")} for i,l in enumerate(leads)]
-            leads_json = json.dumps(leads_data)
-            prompt = "Score these " + industry + " leads for SecureAI Gateway (0-100) and add specific notes.\n"
-            prompt += "Leads: " + leads_json + "\n\n"
-            prompt += "Score based on: AI adoption likelihood, company size, decision maker seniority, compliance needs.\n"
-            prompt += "Return JSON: [{" + '"index":0,"score":85,"notes":"why they urgently need SecureAI Gateway"' + "}]\n"
-            prompt += "Return only JSON."
-            result = self.think(prompt)
-            clean = result.replace("```json","").replace("```","").strip()
-            scores = json.loads(clean)
-            for s in scores:
-                idx = s.get("index", 0)
-                if idx < len(leads):
-                    leads[idx]["score"] = s.get("score", leads[idx].get("score", 70))
-                    if s.get("notes"):
-                        leads[idx]["notes"] = s.get("notes")
-        except Exception as e:
-            self.log("ai_score", str(e), "error")
-        return leads
+            return 0
 
-    def search_by_domain(self, domain: str) -> list:
-        """Manually search a specific company domain"""
-        leads = self._hunter_domain_search(domain, "Unknown")
-        if leads:
-            saved = self._save_leads(leads)
-            self.log("search_by_domain", f"Found {len(leads)} contacts at {domain}")
-        return leads
-
-    def _save_leads(self, leads: list) -> int:
         db = self.db
         saved = 0
-        for lead_data in leads:
+
+        for lead in leads:
+            # Check duplicate
+            existing = db.query(Lead).filter(Lead.email == lead["email"]).first()
+            if existing:
+                continue
+
+            # AI scoring
+            prompt = f"""Score this lead for SecureAI Gateway (enterprise AI security, on-premise DLP).
+Company: {lead['company']}
+Contact: {lead['contact_name']}
+Title: {lead['title']}
+Industry: {industry}
+Email confidence: {lead.get('confidence', 0)}%
+
+Score 0-100 based on:
+- Decision making authority (CTO/CISO/IT Manager = high, founder = high)
+- Industry compliance needs (healthcare/legal/finance = high)
+- Likely AI adoption stage
+- Budget authority
+
+Return JSON only: {{"score": 85, "notes": "why they need SecureAI Gateway specifically"}}"""
+
             try:
-                email = lead_data.get("email", "")
-                if email:
-                    existing = db.query(Lead).filter(Lead.email == email).first()
-                    if existing:
-                        continue
-                lead = Lead(
-                    company=lead_data.get("company", "Unknown"),
-                    contact_name=lead_data.get("contact_name", ""),
-                    email=email,
-                    industry=lead_data.get("industry", ""),
-                    company_size=str(lead_data.get("company_size", "")),
-                    country=lead_data.get("country", ""),
-                    source=lead_data.get("source", "Scout Agent"),
-                    score=int(lead_data.get("score", 50)),
-                    notes=lead_data.get("notes", ""),
-                    status="new"
-                )
-                db.add(lead)
-                saved += 1
-            except Exception as e:
-                self.log("save_lead", str(e), "error")
-        db.commit()
-        metrics = db.query(Metric).first()
-        if metrics:
-            metrics.total_leads += saved
-            metrics.updated_at = datetime.utcnow()
+                result = self.think(prompt)
+                scored = json.loads(result.replace("```json","").replace("```","").strip())
+                score = scored.get("score", 70)
+                notes = scored.get("notes", "")
+            except:
+                score = 70
+                notes = f"{lead['title']} at {lead['company']} in {industry}"
+
+            new_lead = Lead(
+                company=lead["company"],
+                contact_name=lead["contact_name"],
+                email=lead["email"],
+                industry=industry,
+                country=lead.get("country", "Global"),
+                score=score,
+                status="new",
+                notes=f"[{lead['title']}] {notes}",
+                created_at=datetime.utcnow()
+            )
+            db.add(new_lead)
             db.commit()
+            saved += 1
+            self.log("save_lead", f"Saved: {lead['contact_name']} ({lead['title']}) at {lead['company']} — score {score}")
+
         return saved
 
-    def get_all_leads(self) -> list:
-        db = self.db
-        leads = db.query(Lead).order_by(Lead.score.desc()).all()
-        return [{"id":l.id,"company":l.company,"contact":l.contact_name,"email":l.email,
-                 "industry":l.industry,"country":l.country,"score":l.score,"status":l.status,
-                 "notes":l.notes,"created_at":str(l.created_at)} for l in leads]
+    def run_full_scout(self) -> dict:
+        """Full scout cycle — all industries"""
+        total_saved = 0
+        results = {}
+
+        for industry in TARGET_COMPANIES.keys():
+            try:
+                leads = self.search_leads(industry, count=5)
+                saved = self.score_and_save_leads(leads, industry)
+                total_saved += saved
+                results[industry] = {"found": len(leads), "saved": saved}
+                self.log("run_full_scout", f"{industry}: found {len(leads)}, saved {saved}")
+            except Exception as e:
+                self.log("run_full_scout", f"{industry} error: {e}", "error")
+                results[industry] = {"error": str(e)}
+
+        return {"total_saved": total_saved, "by_industry": results}

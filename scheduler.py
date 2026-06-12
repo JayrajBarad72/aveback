@@ -25,19 +25,15 @@ def ceo_brain_cycle():
         except: pass
 
 def lead_generation_job():
-    logger.info("Scout: Finding leads...")
+    logger.info("Scout: Finding global decision-maker leads...")
     try:
         from agents.scout_agent import ScoutAgent
         scout = ScoutAgent()
-        for industry in ["IT", "Healthcare", "Finance", "R&D"]:
-            try:
-                scout.search_leads(industry, count=5)
-            except Exception as e:
-                logger.error(f"Scout {industry} error: {e}")
+        result = scout.run_full_scout()
         scout.close()
-        logger.info("Lead generation done")
+        logger.info(f"Scout complete: {result.get('total_saved', 0)} leads saved")
     except Exception as e:
-        logger.error(f"Lead generation error: {e}")
+        logger.error(f"Scout error: {e}")
 
 def outreach_job():
     logger.info("Outreach: Sending emails...")

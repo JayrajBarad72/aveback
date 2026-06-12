@@ -684,13 +684,6 @@ def ping():
 # ── Website Contact Form ──────────────────────────────────
 
 
-@app.get("/api/leads")
-def get_all_leads(db: DBSession = Depends(get_db)):
-    leads = db.query(Lead).order_by(Lead.created_at.desc()).all()
-    return {"leads": [{"id":l.id,"name":l.name,"company":l.company,"email":l.email,
-            "industry":l.industry,"status":l.status,"score":l.score,
-            "created_at":str(l.created_at)} for l in leads]}
-
 @app.get("/api/emails")
 def get_all_emails(db: DBSession = Depends(get_db)):
     from database import Email as EmailModel

@@ -28,111 +28,85 @@ class OutreachAgent(BaseAgent):
         company = lead.get("company", "")
         notes = lead.get("notes", "")
 
-        # Detect European leads for GDPR angle
-        eu_countries = ["germany", "france", "netherlands", "spain", "italy",
-                        "sweden", "denmark", "norway", "finland", "belgium",
-                        "switzerland", "austria", "poland", "uk", "europe"]
-        is_european = any(c in country.lower() for c in eu_countries)
+        prompt = f"""You are Alex, a sales rep for SecureAI Gateway - an on-premise AI security platform.
 
-        compliance_angle = ""
-        if is_european or "gdpr" in notes.lower():
-            compliance_angle = "GDPR Article 25 requires data protection by design. Every AI prompt your team sends to ChatGPT or Claude passes through servers outside the EU - a potential GDPR violation."
-        elif industry == "Healthcare":
-            compliance_angle = "HIPAA requires that patient data never reaches third-party AI servers without a BAA agreement - which OpenAI and Anthropic don't offer by default."
-        elif industry == "Finance":
-            compliance_angle = "Financial regulators increasingly flag AI tools that send customer data to external servers. PCI-DSS and SOC 2 compliance is at risk with uncontrolled AI usage."
-        elif industry == "Legal":
-            compliance_angle = "Attorney-client privilege is at risk when lawyers use ChatGPT - client names and case details are sent to OpenAI servers and stored indefinitely."
-        else:
-            compliance_angle = "Every prompt your team sends to ChatGPT or Claude leaves your network - customer data, financials, and IP are stored on third-party servers with no audit trail."
+Write a cold outreach email to this specific person:
 
-        prompt = f"""Write a compelling cold outreach email for SecureAI Gateway that people actually want to read.
+Name: {first_name}
+Job Title: {title}
+Company: {company}
+Industry: {industry}
+Country: {country}
+What we know about them: {notes}
 
-Lead details:
-- Name: {first_name} ({title})
-- Company: {company}
-- Industry: {industry}
-- Country: {country}
-- Context: {notes[:200]}
+Your job: Write an email that feels like it was written SPECIFICALLY for this person.
+Not a template. Not a generic pitch. A real email from one professional to another.
 
-Compliance angle: {compliance_angle}
+Think about:
+- What does someone with this exact title worry about at night?
+- What specific AI risk does their industry face?
+- What would make THEM personally look bad if something went wrong?
 
-SUBJECT LINE rules:
+SUBJECT LINE:
 - Max 7 words
-- Must create curiosity or speak to a specific fear
-- Examples of good subjects:
-  * "Is {company}'s AI usage GDPR compliant?"
-  * "Your team is using ChatGPT. Here's the risk."
-  * "How {industry} firms are securing AI in 2026"
-  * "Quick question about AI security at {company}"
-- NO clickbait, NO ALL CAPS, NO exclamation marks
+- Specific to their situation
+- Creates curiosity or speaks to a real fear they have
+- No generic phrases
 
-EMAIL BODY structure (150-180 words max):
+EMAIL BODY (150 words max):
+- First line: one sharp, specific observation about their situation. No greeting fluff.
+- Second paragraph: what the real risk is for someone in their exact role
+- Third paragraph: what SecureAI Gateway does, in plain language. One sentence max per idea.
+- Fourth paragraph: one credibility point or fact
+- Fifth paragraph: mention our blog at aventrixtechnologies.com/blog - one natural sentence
+- Last line: one soft question to start a conversation
 
-1. HOOK (1 sentence) - a specific, uncomfortable truth about their situation
-   Example: "Right now, every ChatGPT prompt your team sends leaves your network permanently."
-
-2. PROBLEM (2-3 sentences) - make it real and specific to their role/industry
-   Use the compliance angle. Make them feel the risk.
-
-3. SOLUTION (2-3 sentences) - introduce SecureAI Gateway naturally
-   "SecureAI Gateway is an on-premise AI platform that sits between your team and any AI model."
-   Mention: DLP protection blocks sensitive data, full audit logs, runs on their server, 20-min setup.
-
-4. PROOF/CREDIBILITY (1-2 sentences) - add one compelling fact
-   Example: "83% of companies have zero controls over employee AI usage. The ones that do are building an unfair advantage."
-
-5. BLOG/RESOURCES (1 sentence) - add our website and blog naturally
-   Example: "We've written about exactly this at aventrixtechnologies.com/blog - worth 5 minutes of your time."
-
-6. CTA (1 sentence) - soft, no pressure
-   Example: "Would a 15-minute call this week make sense, {first_name}?"
-
-7. SIGNATURE:
+SIGNATURE (exact format, nothing else):
 Alex
 SecureAI Gateway | Aventrix Technologies
 aventrixtechnologies.com
-📖 Blog: aventrixtechnologies.com/blog.html
-🛡️ Learn more: aventrixtechnologies.com/features.html
 
-Rules:
-- Write like a real person, not a marketer
-- Short paragraphs, max 2-3 sentences each
-- NO bullet points in the email body
-- NO generic phrases like "I hope this email finds you well"
-- NO "I wanted to reach out" or "I came across your profile"
-- Make the reader feel slightly uncomfortable about their current situation
-- Then immediately offer relief
+STRICT RULES:
+- Never use the word "ensure"
+- Never use "I hope this finds you well" or any variation
+- Never use "I wanted to reach out"
+- Never use dashes like this: -  or this: --
+- No bullet points
+- No exclamation marks
+- No bold or caps for emphasis
+- Write how a smart, confident person talks
+- Every sentence must be about THEM, not about us
+- The product is mentioned briefly, not pitched heavily
 
-Return JSON only - no markdown:
+Return JSON only, no markdown:
 {{"subject": "...", "body": "..."}}"""
 
         result = self.think(prompt)
         try:
             clean = result.replace("```json","").replace("```","").strip()
-            return json.loads(clean)
+            parsed = json.loads(clean)
+            # Strip any em dashes that AI generates
+            parsed["subject"] = parsed["subject"].replace(" - ", " ").replace("-", " ").strip()
+            parsed["body"] = parsed["body"].replace(" - ", " ").replace("--", " ")
+            return parsed
         except:
-            return {
-                "subject": f"Quick question about AI security at {company}",
-                "body": f"""Hi {first_name},
+            # Simple fallback - fully personalised to their role
+            body = f"""Hi {first_name},
 
-{compliance_angle}
+Most {title}s at {industry} companies are dealing with the same problem right now. Their teams are using AI tools daily and nobody has visibility into what data is being shared or where it goes.
 
-That's the reality for most {industry} companies right now - and the exposure grows every day employees use AI tools without oversight.
+SecureAI Gateway puts that control back in your hands. It runs on your own server, scans every AI prompt before it reaches any external provider, and keeps a full audit log. Your team keeps using the AI tools they rely on. You get visibility and control.
 
-SecureAI Gateway is an on-premise platform that sits between your team and any AI model (Claude, ChatGPT, or free local AI). Every prompt is scanned for sensitive data before it leaves your network. Full audit logs. Zero data stored externally. Takes 20 minutes to deploy on your own server.
+We wrote something about this recently that might be worth your time: aventrixtechnologies.com/blog
 
-83% of companies have no controls over employee AI usage. The firms building those controls now are creating a serious compliance advantage.
-
-We've written about how {industry} companies are handling this at aventrixtechnologies.com/blog - worth a quick read.
-
-Would a 15-minute call this week make sense, {first_name}?
+Would a quick call make sense this week?
 
 Alex
 SecureAI Gateway | Aventrix Technologies
-aventrixtechnologies.com
-📖 Blog: aventrixtechnologies.com/blog.html
-🛡️ Features: aventrixtechnologies.com/features.html"""
+aventrixtechnologies.com"""
+            return {
+                "subject": f"AI visibility at {company}",
+                "body": body
             }
 
 
@@ -169,30 +143,41 @@ aventrixtechnologies.com
             plain_body = email_content["body"]
             msg.attach(MIMEText(plain_body, "plain"))
 
-            # HTML version - looks premium in inbox
-            html_body = f"""<!DOCTYPE html>
+            # HTML version
+            paragraphs = "".join(
+                f'<p style="margin:0 0 18px 0;font-size:16px;line-height:1.75;color:#1a1a1a">{p.strip()}</p>'
+                for p in plain_body.split("\n\n") if p.strip()
+            )
+            html_body = """<!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"></head>
-<body style="font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:20px;color:#1a1a1a;line-height:1.7;font-size:16px">
-{"".join(f'<p style="margin:0 0 16px 0">{p.strip()}</p>' for p in plain_body.split(chr(10)+chr(10)) if p.strip())}
-<hr style="border:none;border-top:1px solid #e0e0e0;margin:28px 0">
-<table style="width:100%">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Georgia,serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 0">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+<tr><td style="padding:40px 48px 32px">""" + paragraphs + """</td></tr>
+<tr><td style="padding:0 48px 32px">
+<table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eeeeee;padding-top:24px">
 <tr>
-<td style="font-size:13px;color:#666">
-  <strong style="color:#1a1a1a;font-size:14px">Alex</strong><br>
-  SecureAI Gateway | Aventrix Technologies<br>
-  <a href="https://aventrixtechnologies.com" style="color:#378ADD;text-decoration:none">aventrixtechnologies.com</a>
+<td style="vertical-align:top">
+  <p style="margin:0;font-size:14px;font-weight:bold;color:#1a1a1a">Alex</p>
+  <p style="margin:4px 0 2px;font-size:13px;color:#555555">SecureAI Gateway | Aventrix Technologies</p>
+  <a href="https://aventrixtechnologies.com" style="font-size:13px;color:#378ADD;text-decoration:none">aventrixtechnologies.com</a>
 </td>
-<td style="text-align:right;font-size:12px;color:#888">
-  <a href="https://aventrixtechnologies.com/blog.html" style="color:#378ADD;text-decoration:none;display:block;margin-bottom:4px">📖 Read our Blog</a>
-  <a href="https://aventrixtechnologies.com/features.html" style="color:#378ADD;text-decoration:none;display:block;margin-bottom:4px">🛡️ Product Features</a>
-  <a href="https://aventrixtechnologies.com/contact.html" style="color:#378ADD;text-decoration:none;display:block">📅 Book a Demo</a>
+<td style="vertical-align:top;text-align:right">
+  <a href="https://aventrixtechnologies.com/blog.html" style="display:block;font-size:12px;color:#378ADD;text-decoration:none;margin-bottom:6px">Read our Blog</a>
+  <a href="https://aventrixtechnologies.com/features.html" style="display:block;font-size:12px;color:#378ADD;text-decoration:none;margin-bottom:6px">Product Features</a>
+  <a href="https://aventrixtechnologies.com/contact.html" style="display:block;font-size:12px;color:#378ADD;text-decoration:none">Book a Demo</a>
 </td>
 </tr>
 </table>
-<p style="font-size:11px;color:#aaa;margin-top:20px">
-To unsubscribe, reply with "unsubscribe" and we'll remove you immediately.
-</p>
+</td></tr>
+<tr><td style="background:#f9f9f9;padding:16px 48px;border-top:1px solid #eeeeee">
+  <p style="margin:0;font-size:11px;color:#aaaaaa">To unsubscribe reply with unsubscribe and we will remove you immediately.</p>
+</td></tr>
+</table>
+</td></tr>
+</table>
 </body>
 </html>"""
             msg.attach(MIMEText(html_body, "html"))

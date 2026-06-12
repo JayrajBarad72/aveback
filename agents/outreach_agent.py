@@ -36,15 +36,15 @@ class OutreachAgent(BaseAgent):
 
         compliance_angle = ""
         if is_european or "gdpr" in notes.lower():
-            compliance_angle = "GDPR Article 25 requires data protection by design. Every AI prompt your team sends to ChatGPT or Claude passes through servers outside the EU — a potential GDPR violation."
+            compliance_angle = "GDPR Article 25 requires data protection by design. Every AI prompt your team sends to ChatGPT or Claude passes through servers outside the EU - a potential GDPR violation."
         elif industry == "Healthcare":
-            compliance_angle = "HIPAA requires that patient data never reaches third-party AI servers without a BAA agreement — which OpenAI and Anthropic don't offer by default."
+            compliance_angle = "HIPAA requires that patient data never reaches third-party AI servers without a BAA agreement - which OpenAI and Anthropic don't offer by default."
         elif industry == "Finance":
             compliance_angle = "Financial regulators increasingly flag AI tools that send customer data to external servers. PCI-DSS and SOC 2 compliance is at risk with uncontrolled AI usage."
         elif industry == "Legal":
-            compliance_angle = "Attorney-client privilege is at risk when lawyers use ChatGPT — client names and case details are sent to OpenAI servers and stored indefinitely."
+            compliance_angle = "Attorney-client privilege is at risk when lawyers use ChatGPT - client names and case details are sent to OpenAI servers and stored indefinitely."
         else:
-            compliance_angle = "Every prompt your team sends to ChatGPT or Claude leaves your network — customer data, financials, and IP are stored on third-party servers with no audit trail."
+            compliance_angle = "Every prompt your team sends to ChatGPT or Claude leaves your network - customer data, financials, and IP are stored on third-party servers with no audit trail."
 
         prompt = f"""Write a compelling cold outreach email for SecureAI Gateway that people actually want to read.
 
@@ -69,23 +69,23 @@ SUBJECT LINE rules:
 
 EMAIL BODY structure (150-180 words max):
 
-1. HOOK (1 sentence) — a specific, uncomfortable truth about their situation
+1. HOOK (1 sentence) - a specific, uncomfortable truth about their situation
    Example: "Right now, every ChatGPT prompt your team sends leaves your network permanently."
 
-2. PROBLEM (2-3 sentences) — make it real and specific to their role/industry
+2. PROBLEM (2-3 sentences) - make it real and specific to their role/industry
    Use the compliance angle. Make them feel the risk.
 
-3. SOLUTION (2-3 sentences) — introduce SecureAI Gateway naturally
+3. SOLUTION (2-3 sentences) - introduce SecureAI Gateway naturally
    "SecureAI Gateway is an on-premise AI platform that sits between your team and any AI model."
    Mention: DLP protection blocks sensitive data, full audit logs, runs on their server, 20-min setup.
 
-4. PROOF/CREDIBILITY (1-2 sentences) — add one compelling fact
+4. PROOF/CREDIBILITY (1-2 sentences) - add one compelling fact
    Example: "83% of companies have zero controls over employee AI usage. The ones that do are building an unfair advantage."
 
-5. BLOG/RESOURCES (1 sentence) — add our website and blog naturally
-   Example: "We've written about exactly this at aventrixtechnologies.com/blog — worth 5 minutes of your time."
+5. BLOG/RESOURCES (1 sentence) - add our website and blog naturally
+   Example: "We've written about exactly this at aventrixtechnologies.com/blog - worth 5 minutes of your time."
 
-6. CTA (1 sentence) — soft, no pressure
+6. CTA (1 sentence) - soft, no pressure
    Example: "Would a 15-minute call this week make sense, {first_name}?"
 
 7. SIGNATURE:
@@ -104,7 +104,7 @@ Rules:
 - Make the reader feel slightly uncomfortable about their current situation
 - Then immediately offer relief
 
-Return JSON only — no markdown:
+Return JSON only - no markdown:
 {{"subject": "...", "body": "..."}}"""
 
         result = self.think(prompt)
@@ -118,13 +118,13 @@ Return JSON only — no markdown:
 
 {compliance_angle}
 
-That's the reality for most {industry} companies right now — and the exposure grows every day employees use AI tools without oversight.
+That's the reality for most {industry} companies right now - and the exposure grows every day employees use AI tools without oversight.
 
 SecureAI Gateway is an on-premise platform that sits between your team and any AI model (Claude, ChatGPT, or free local AI). Every prompt is scanned for sensitive data before it leaves your network. Full audit logs. Zero data stored externally. Takes 20 minutes to deploy on your own server.
 
 83% of companies have no controls over employee AI usage. The firms building those controls now are creating a serious compliance advantage.
 
-We've written about how {industry} companies are handling this at aventrixtechnologies.com/blog — worth a quick read.
+We've written about how {industry} companies are handling this at aventrixtechnologies.com/blog - worth a quick read.
 
 Would a 15-minute call this week make sense, {first_name}?
 
@@ -169,7 +169,7 @@ aventrixtechnologies.com
             plain_body = email_content["body"]
             msg.attach(MIMEText(plain_body, "plain"))
 
-            # HTML version — looks premium in inbox
+            # HTML version - looks premium in inbox
             html_body = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"></head>
@@ -191,8 +191,7 @@ aventrixtechnologies.com
 </tr>
 </table>
 <p style="font-size:11px;color:#aaa;margin-top:20px">
-  You received this because you're a decision maker at a company using AI tools.<br>
-  To unsubscribe, reply with "unsubscribe" and we will remove you immediately.
+To unsubscribe, reply with "unsubscribe" and we'll remove you immediately.
 </p>
 </body>
 </html>"""

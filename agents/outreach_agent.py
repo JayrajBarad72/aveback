@@ -61,10 +61,13 @@ EMAIL BODY (150 words max):
 - Fifth paragraph: mention our blog at aventrixtechnologies.com/blog - one natural sentence
 - Last line: one soft question to start a conversation
 
-SIGNATURE (exact format, nothing else):
+SIGNATURE (copy exactly, no changes):
 Alex
 SecureAI Gateway | Aventrix Technologies
 aventrixtechnologies.com
+
+CRITICAL: Never use em dashes or hyphens in the email body. Write full sentences instead.
+CRITICAL: The signature must be exactly as shown above. Do not add "Team" or change anything.
 
 STRICT RULES:
 - Never use the word "ensure"
@@ -85,9 +88,14 @@ Return JSON only, no markdown:
         try:
             clean = result.replace("```json","").replace("```","").strip()
             parsed = json.loads(clean)
-            # Strip any em dashes that AI generates
-            parsed["subject"] = parsed["subject"].replace(" - ", " ").replace("-", " ").strip()
-            parsed["body"] = parsed["body"].replace(" - ", " ").replace("--", " ")
+            # Clean up AI bad habits
+            for key in ["subject", "body"]:
+                if key in parsed:
+                    parsed[key] = parsed[key].replace(" — ", " ").replace("—", "")
+                    parsed[key] = parsed[key].replace(" -- ", " ").replace("--", "")
+                    parsed[key] = parsed[key].replace("Best regards,", "")
+                    parsed[key] = parsed[key].replace("Kind regards,", "")
+                    parsed[key] = parsed[key].replace("SecureAI Gateway Team", "SecureAI Gateway")
             return parsed
         except:
             # Simple fallback - fully personalised to their role

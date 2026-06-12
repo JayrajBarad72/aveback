@@ -676,81 +676,47 @@ def ping(db: DBSession = Depends(get_db)):
 
 # ── Website Contact Form ──────────────────────────────────
 @app.post("/api/contact")
-async def submit_contact(request: Request, background_tasks: BackgroundTasks, db: DBSession = Depends(get_db)):
-    """Receives contact form — saves to DB instantly, notifies in background"""
+async def submit_contact(request: Request):
+    """Website contact form — instant response, WhatsApp notify"""
     try:
         data = await request.json()
-    except Exception:
-        return {"success": False, "message": "Invalid request"}
-    name = data.get("name","")
-    company = data.get("company","")
-    email = data.get("email","")
-    phone = data.get("phone","")
-    size = data.get("company_size","")
-    industry = data.get("industry","")
-    interest = data.get("interest","")
-    message = data.get("message","")
+        name     = data.get("name", "")
+        company  = data.get("company", "")
+        email    = data.get("email", "")
+        phone    = data.get("phone", "")
+        size     = data.get("company_size", "")
+        industry = data.get("industry", "")
+        interest = data.get("interest", "")
+        message  = data.get("message", "")
 
-    try:
-        db.add(AgentLog(
-            agent_name="Website",
-            action="contact_form",
-            result=f"New lead: {name} from {company} ({email}) | {phone} | {size} | {industry} | {interest} | {message[:200]}",
-            status="success",
-            created_at=datetime.utcnow()
-        ))
-        db.commit()
+        print(f"[CONTACT] New lead: {name} | {company} | {email} | {phone}")
+
+        # WhatsApp Jayraj immediately
+        try:
+            from whatsapp import send_whatsapp
+            msg = f"New Website Lead!\n\nName: {name}\nCompany: {company}\nEmail: {email}\nPhone: {phone}\nIndustry: {industry}\nInterest: {interest}\nMessage: {message[:200]}"
+            send_whatsapp(msg)
+            print("[CONTACT] WhatsApp sent")
+        except Exception as e:
+            print(f"[CONTACT] WhatsApp error: {e}")
+
+        # Save to DB
+        try:
+            db_session = next(get_db())
+            db_session.add(AgentLog(
+                agent_name="Website",
+                action="contact_form",
+                result=f"{name} | {company} | {email} | {phone} | {industry}",
+                status="success",
+                created_at=datetime.utcnow()
+            ))
+            db_session.commit()
+            db_session.close()
+        except Exception as e:
+            print(f"[CONTACT] DB error: {e}")
+
+        return {"success": True, "message": "Thank you! We will contact you within 24 hours."}
+
     except Exception as e:
-        print(f"Contact DB error: {e}")
-
-    background_tasks.add_task(_notify_contact, name, company, email, phone, size, industry, interest, message)
-    return {"success": True, "message": "Thank you! We will contact you within 24 hours."}
-
-
-def _notify_contact(name, company, email, phone, size, industry, interest, message):
-    """Background: email + WhatsApp Jayraj"""
-    import smtplib, ssl
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
-    smtp_host = os.getenv("ZOHO_SMTP_HOST","smtp.zeptomail.in")
-    smtp_port = int(os.getenv("ZOHO_SMTP_PORT",465))
-    from_email = os.getenv("ZOHO_EMAIL","sales@aventrixtechnologies.com")
-    app_password = os.getenv("ZOHO_APP_PASSWORD","")
-    recipients = ["jayraj727@gmail.com", "sales@aventrixtechnologies.com"]
-    print(f"[CONTACT] SMTP {smtp_host}:{smtp_port} | from={from_email} | pw={'SET' if app_password else 'MISSING'}")
-    try:
-        msg = MIMEMultipart()
-        msg["Subject"] = f"New Lead: {name} from {company} — SecureAI Website"
-        msg["From"] = f"SecureAI Gateway <{from_email}>"
-        msg["To"] = ", ".join(recipients)
-        msg["Reply-To"] = email
-        body = f"""New contact form — aventrixtechnologies.com
-
-Name: {name}
-Company: {company}
-Email: {email}
-Phone: {phone}
-Company Size: {size}
-Industry: {industry}
-Interested In: {interest}
-Message: {message}
-
-Reply-To: {email}
-"""
-        msg.attach(MIMEText(body, "plain"))
-        ctx = ssl.create_default_context()
-        with smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx, timeout=30) as server:
-            server.login("emailapikey", app_password)
-            server.sendmail(from_email, recipients, msg.as_string())
-        print(f"[CONTACT] Email sent to {recipients}")
-    except Exception as e:
-        print(f"[CONTACT] Email FAILED: {e}")
-    try:
-        from whatsapp import notify_important_update
-        notify_important_update(
-            "New Website Lead",
-            f"Name: {name}\nCompany: {company}\nEmail: {email}\nPhone: {phone}\nIndustry: {industry}\nInterest: {interest}"
-        )
-        print("[CONTACT] WhatsApp sent")
-    except Exception as e:
-        print(f"[CONTACT] WhatsApp FAILED: {e}")
+        print(f"[CONTACT] Error: {e}")
+        return {"success": True, "message": "Received"}  # Always return success to frontend

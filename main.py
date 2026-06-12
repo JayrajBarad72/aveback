@@ -807,10 +807,22 @@ def whatsapp_status():
 # ── Fix 4: All leads endpoint ────────────────────────────
 @app.get("/api/leads")
 def get_all_leads(db: DBSession = Depends(get_db)):
-    leads = db.query(Lead).order_by(Lead.score.desc()).all()
-    return {"leads": [
-        {"id": l.id, "name": l.contact_name, "company": l.company,
-         "email": l.email, "industry": l.industry, "status": l.status,
-         "score": l.score, "country": l.country, "created_at": str(l.created_at)}
-        for l in leads
-    ]}
+    try:
+        leads = db.query(Lead).order_by(Lead.score.desc()).all()
+        return {"leads": [
+            {
+                "id": l.id,
+                "name": l.contact_name or "",
+                "company": l.company or "",
+                "email": l.email or "",
+                "industry": l.industry or "",
+                "status": l.status or "new",
+                "score": l.score or 0,
+                "country": l.country or "Global",
+                "notes": (l.notes or "")[:200],
+                "created_at": str(l.created_at)
+            }
+            for l in leads
+        ], "total": len(leads)}
+    except Exception as e:
+        return {"error": str(e), "leads": []}

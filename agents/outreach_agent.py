@@ -22,31 +22,66 @@ class OutreachAgent(BaseAgent):
     def generate_email(self, lead: dict) -> dict:
         contact = lead.get("contact_name") or "there"
         first_name = contact.split()[0] if contact and contact != "there" else "there"
-        prompt = f"""
-Write a cold outreach email for this lead:
-Company: {lead.get('company')}
-Contact: {contact} ({lead.get('title','Decision Maker')})
-Industry: {lead.get('industry')}
-Country: {lead.get('country')}
-Why they need SecureAI Gateway: {lead.get('notes', 'AI security and access control')}
+        title = lead.get("title", "")
+        industry = lead.get("industry", "")
+        country = lead.get("country", "Global")
+        company = lead.get("company", "")
+        notes = lead.get("notes", "")
+
+        # Detect European leads for GDPR angle
+        eu_countries = ["germany", "france", "netherlands", "spain", "italy",
+                        "sweden", "denmark", "norway", "finland", "belgium",
+                        "switzerland", "austria", "poland", "uk", "europe"]
+        is_european = any(c in country.lower() for c in eu_countries)
+
+        compliance_angle = ""
+        if is_european or "gdpr" in notes.lower():
+            compliance_angle = "GDPR Article 25 requires data protection by design. Every AI prompt your team sends to ChatGPT or Claude passes through servers outside the EU — a potential GDPR violation."
+        elif industry == "Healthcare":
+            compliance_angle = "HIPAA requires that patient data never reaches third-party AI servers without a BAA agreement — which OpenAI and Anthropic don't offer by default."
+        elif industry == "Finance":
+            compliance_angle = "Financial regulators increasingly flag AI tools that send customer data to external servers. PCI-DSS and SOC 2 compliance is at risk with uncontrolled AI usage."
+        elif industry == "Legal":
+            compliance_angle = "Attorney-client privilege is at risk when lawyers use ChatGPT — client names and case details are sent to OpenAI servers and stored indefinitely."
+        else:
+            compliance_angle = "Every prompt your team sends to ChatGPT or Claude leaves your network — customer data, financials, and IP are stored on third-party servers with no audit trail."
+
+        prompt = f"""Write a short, genuine cold outreach email for SecureAI Gateway.
+
+Lead details:
+- Name: {first_name} ({title})
+- Company: {company}
+- Industry: {industry}
+- Country: {country}
+- Context: {notes[:200]}
+
+Compliance angle to use: {compliance_angle}
 
 Rules:
-- Subject: short, curiosity-driven, NOT spammy
-- Opening: personalized to their industry pain point
-- Body: 3 short paragraphs, max 100 words total
-- Pain point: uncontrolled AI usage, data leaks via ChatGPT/Copilot
-- Solution: SecureAI Gateway — control, monitor, secure all AI tools
-- CTA: soft ask for 15 min call, no pressure
-- Signature: "SecureAI Gateway Team | Aventrix Technologies | aventrixtechnologies.com" — NO personal names, NO location
+- Subject line: max 8 words, specific to their industry, NOT generic
+- Body: max 100 words total — short is better
+- Sound like a real human, NOT a marketing email
+- Open with ONE specific pain point relevant to their role/industry
+- Mention SecureAI Gateway once — "on-premise AI security platform"
+- Mention: runs on their own server, DLP protection, 20-minute setup
+- End with a simple question like "Would a 15-minute call make sense?"
+- NO bullet points, NO ALL CAPS, NO exclamation marks
+- Sign as: "Alex\nSecureAI Gateway Team | Aventrix Technologies"
+- NO pricing
 
-Return JSON only: {{"subject":"...","body":"..."}}
-"""
+Return JSON only:
+{{"subject": "...", "body": "..."}}"""
+
         result = self.think(prompt)
         try:
             clean = result.replace("```json","").replace("```","").strip()
             return json.loads(clean)
         except:
-            return {"subject": "Quick question about AI security at " + lead.get("company","your company"), "body": result}
+            return {
+                "subject": f"AI data security for {company}",
+                "body": f"Hi {first_name},\n\n{compliance_angle}\n\nSecureAI Gateway gives your team access to Claude and ChatGPT with full DLP protection — running on your own server. 20-minute setup, no data leaves your network.\n\nWould a 15-minute call make sense?\n\nAlex\nSecureAI Gateway Team | Aventrix Technologies | aventrixtechnologies.com"
+            }
+
 
     def send_email(self, lead_id: int) -> bool:
         db = self.db

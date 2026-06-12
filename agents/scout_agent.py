@@ -17,71 +17,131 @@ from datetime import datetime
 
 TARGET_COMPANIES = {
     "Legal": [
-        # US law firms
+        # US law firms (50-500 employees)
         "lathropgpm.com", "foxrothschild.com", "fisherphillips.com",
         "grsm.com", "hklaw.com", "bclplaw.com", "seyfarth.com",
         # UK law firms
         "weightmans.com", "brownejacobson.com", "bevanbrittan.com",
-        # Australia
-        "maddocks.com.au", "corrs.com.au", "sparke.com.au",
-        # Canada
-        "mcmillan.ca", "dentons.com", "blakes.com",
+        "clydeco.com", "dwf.law", "shakespeares.co.uk",
+        # Europe — Germany (GDPR strictest enforcement)
+        "noerr.com", "gleisslutz.com", "heuking.de",
+        "cbh.de", "gvw.com", "luther-lawfirm.com",
+        # Europe — Netherlands
+        "nautadutilh.com", "hvglaw.nl", "loyensloeff.com",
+        # Europe — France
+        "gide.com", "fidal.com", "linklaters.com",
+        # Europe — Spain
+        "uria.com", "garrigues.com", "cuatrecasas.com",
+        # Europe — Nordics (very privacy-focused)
+        "vinge.se", "bech-bruun.com", "kromannreumert.com",
+        # Australia & Canada
+        "maddocks.com.au", "corrs.com.au", "mcmillan.ca",
     ],
     "Healthcare": [
-        # US healthcare
-        "teamhealth.com", "envision.com", "acuity-healthcare.com",
-        "primedica.com", "mdvip.com", "concentra.com",
+        # US healthcare SMB
+        "teamhealth.com", "concentra.com", "mdvip.com",
         # UK
         "spirehealthcare.com", "ramsayhealth.co.uk",
-        # Australia
-        "healthscope.com.au", "cabrini.com.au",
+        # Europe — Germany (strict health data laws)
+        "helios-gesundheit.de", "asklepios.com", "sana.de",
+        # Europe — Netherlands
+        "radboudumc.nl", "umcutrecht.nl",
+        # Europe — Nordics
+        "aleris.se", "capio.com", "falck.com",
+        # Europe — France
+        "elsan.fr", "ramsay-sante.fr",
+        # Europe — Switzerland (banking + pharma hub)
+        "kssg.ch", "hirslanden.ch", "schulthess-klinik.ch",
         # Middle East
         "mediclinic.ae", "nmc.ae", "aster.ae",
-        # India SMB (NOT large hospital chains)
-        "drreddys.com", "cloudninehospital.com",
+        # Australia
+        "healthscope.com.au", "cabrini.com.au",
     ],
     "Finance": [
-        # US fintech/NBFC
-        "kabbage.com", "fundbox.com", "bluevine.com", "ondeck.com",
-        "greensky.com", "avant.com", "lendingclub.com",
+        # US fintech (50-300 employees)
+        "kabbage.com", "fundbox.com", "bluevine.com",
+        "greensky.com", "avant.com", "ondeck.com",
         # UK fintech
         "oaknorth.com", "iwoca.co.uk", "funding-circle.com",
-        # Australia
-        "prospa.com.au", "moula.com.au", "spotcap.com",
+        "tide.co", "starlingbank.com", "monzo.com",
+        # Europe — Germany fintech (very GDPR conscious)
+        "solarisbank.com", "mambu.com", "raisin.com",
+        "auxmoney.com", "crosslend.com", "creditshelf.com",
+        # Europe — Netherlands fintech
+        "bunq.com", "adyen.com", "mollie.com",
+        # Europe — France fintech
+        "younited-credit.com", "lydia-app.com", "october.eu",
+        # Europe — Nordics fintech
+        "klarna.com", "izettle.com", "trustly.com",
+        # Europe — Spain fintech
+        "bizum.es", "aplazame.com", "myinvestor.es",
+        # Australia fintech
+        "prospa.com.au", "moula.com.au",
         # Middle East fintech
-        "beehive.finance", "liwwa.com", "capiter.com",
-        # India fintech SMB
-        "lendingkart.com", "neogrowth.in", "aye.finance",
+        "beehive.finance", "liwwa.com",
     ],
     "IT_SMB": [
-        # US IT consulting/MSP (50-300 employees)
-        "ntiva.com", "isg-one.com", "datalinknetworks.com",
-        "presidio.com", "cpurge.com", "logically.ai",
-        "clearnetwork.com", "stratospherenetworks.com",
+        # US MSP (50-300 employees)
+        "ntiva.com", "logically.ai", "clearnetwork.com",
+        "stratospherenetworks.com", "cyberfort.com", "arraya.com",
         # UK MSP
-        "pomeroy.com", "fordway.com", "littlefish.co.uk",
+        "fordway.com", "littlefish.co.uk", "ievolve.co.uk",
+        # Europe — Germany IT (very security focused)
+        "bechtle.com", "cancom.com", "allgeier.com",
+        "datagroup.de", "computacenter.com", "ntt.com",
+        # Europe — Netherlands IT
+        "atos.net", "cgi.com", "capgemini.com",
+        # Europe — Nordics IT
+        "tieto.com", "visma.com", "basware.com",
+        # Europe — France IT
+        "sopragroup.com", "altran.com", "inetum.com",
+        # Europe — Belgium/Luxembourg
+        "nviso.eu", "cronos.be", "cegeka.com",
         # Australia IT
-        "versent.com.au", "itoc.com.au", "empired.com",
+        "versent.com.au", "itoc.com.au",
         # Canada IT
-        "sievert.ca", "compugen.com", "pythian.com",
+        "compugen.com", "pythian.com",
     ],
     "Consulting": [
         # US consulting (50-300 employees)
-        "propellergroup.com", "guidehouse.com", "navigant.com",
-        "chartis.com", "kpmg.com", "rsm.com", "plante.com",
-        # UK
+        "guidehouse.com", "chartis.com", "rsm.com",
+        "plante.com", "propellergroup.com",
+        # UK consulting
         "moorhouse.com", "pa.com", "clarasys.com",
-        # Australia
-        "kordamentha.com", "pitcher.com.au", "mcgrathnicol.com",
+        "mottmac.com", "arup.com",
+        # Europe — Germany consulting
+        "rolandberger.com", "goetzpartners.com", "detecon.com",
+        "bbh.de", "bearing-point.com",
+        # Europe — Netherlands consulting
+        "kpmg.nl", "bcg.com", "mckinsey.com",
+        # Europe — Nordics consulting
+        "implement.dk", "ramboll.com", "sweco.se",
+        # Europe — France consulting
+        "wavestone.com", "sia-partners.com", "kearney.com",
+        # Europe — Switzerland consulting
+        "pricecc.com", "bain.com", "accenture.com",
+        # Australia consulting
+        "kordamentha.com", "pitcher.com.au",
     ],
     "Manufacturing": [
-        # US mid-size manufacturers
-        "haynes.com", "materion.com", "insteel.com",
-        "aptargroup.com", "kaman.com", "watts.com",
+        # US mid-size
+        "haynes.com", "materion.com", "kaman.com",
         # UK
         "bodycote.com", "renold.com", "luxfer.com",
+        # Europe — Germany manufacturing (Industry 4.0, lots of AI adoption)
+        "trumpf.com", "kuka.com", "sick.com",
+        "harting.com", "wago.com", "lapp.com",
+        "festo.com", "balluff.com", "ifm.com",
+        # Europe — Netherlands manufacturing
+        "philips.com", "asml.com", "aalberts.com",
+        # Europe — Nordics manufacturing
+        "sandvik.com", "atlas-copco.com", "alfa-laval.com",
+        # Europe — France manufacturing
+        "legrand.com", "essilor.com", "rexel.com",
+        # Europe — Switzerland
+        "abb.com", "georg-fischer.com", "sulzer.com",
         # Australia
-        "boral.com.au", "incitec.com.au", "orica.com",
+        "boral.com.au", "orica.com",
     ]
 }
 

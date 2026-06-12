@@ -720,3 +720,5 @@ async def submit_contact(request: Request):
     except Exception as e:
         print(f"[CONTACT] Error: {e}")
         return {"success": True, "message": "Received"}  # Always return success to frontend
+
+# Force redeploy Fri Jun 12 07:55:35 UTC 2026

@@ -116,7 +116,8 @@ Return JSON only: {{"subject":"...","body":"..."}}
         db = self.db
         leads = db.query(Lead).filter(
             Lead.status == "new",
-            Lead.email != ""
+            Lead.email != "",
+            Lead.score >= 80
         ).order_by(Lead.score.desc()).limit(limit).all()
 
         sent = 0

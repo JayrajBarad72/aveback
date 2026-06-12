@@ -667,7 +667,7 @@ def test_whatsapp():
 
 
 # ── Supabase Keep-Alive (prevents free tier pause) ────────
-@app.get("/api/ping")
+@app.api_route("/api/ping", methods=["GET", "HEAD"])
 def ping():
     """Health check — always returns 200"""
     return {"status": "alive", "time": str(datetime.utcnow())}

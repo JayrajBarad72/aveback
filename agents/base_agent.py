@@ -36,7 +36,7 @@ class BaseAgent:
     def think(self, prompt: str, system_extra: str = "") -> str:
         system = system_extra if system_extra else COMPANY_CONTEXT
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-5",
             max_tokens=1000,
             system=system,
             messages=[{"role": "user", "content": prompt}]

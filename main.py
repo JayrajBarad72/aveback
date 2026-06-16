@@ -1051,6 +1051,210 @@ def get_email_analytics(db: DBSession = Depends(get_db)):
     except Exception as e:
         return {"error": str(e)}
 
+
+# ── Manual Lead Management ───────────────────────────────
+@app.post("/api/leads/add-manual")
+async def add_manual_lead(request: Request, db: DBSession = Depends(get_db)):
+    """Add a lead manually — research company and send personalised email"""
+    import resend
+    data = await request.json()
+    email = data.get("email", "").strip()
+    note = data.get("note", "")
+
+    if not email or "@" not in email:
+        return {"success": False, "error": "Valid email required"}
+
+    # Check duplicate
+    existing = db.query(Lead).filter(Lead.email == email).first()
+    if existing:
+        return {"success": False, "error": f"Lead already exists: {existing.contact_name} at {existing.company}"}
+
+    # Extract domain for research
+    domain = email.split("@")[1]
+    company_name = domain.split(".")[0].replace("-","").title()
+
+    # Research person using Hunter.io
+    contact_name = ""
+    title = ""
+    country = "Global"
+    industry = "Unknown"
+
+    try:
+        import requests as req
+        hunter_key = os.getenv("HUNTER_API_KEY", "beb5cd3914af45403b8b788eb367d0f7249c9561")
+        # Find email info
+        r = req.get(f"https://api.hunter.io/v2/email-verifier?email={email}&api_key={hunter_key}", timeout=10)
+        if r.status_code == 200:
+            info = r.json().get("data", {})
+            first = info.get("first_name", "")
+            last = info.get("last_name", "")
+            contact_name = f"{first} {last}".strip()
+            title = info.get("position", "")
+
+        # Get company info
+        r2 = req.get(f"https://api.hunter.io/v2/domain-search?domain={domain}&api_key={hunter_key}&limit=1", timeout=10)
+        if r2.status_code == 200:
+            org = r2.json().get("data", {})
+            company_name = org.get("organization", company_name)
+            country = org.get("country", "Global") or "Global"
+            industry = org.get("industry", "Unknown") or "Unknown"
+    except Exception as e:
+        print(f"[MANUAL LEAD] Research error: {e}")
+
+    if not contact_name:
+        contact_name = email.split("@")[0].replace(".", " ").replace("_"," ").title()
+
+    # AI research and personalised email
+    from agents.outreach_agent import OutreachAgent
+    agent = OutreachAgent()
+
+    # Research prompt
+    research_prompt = f"""Research this company and person for a cold outreach email:
+Email: {email}
+Name: {contact_name}
+Title: {title or "Unknown"}
+Company: {company_name}
+Domain: {domain}
+Industry: {industry}
+Country: {country}
+Additional note from Jayraj: {note}
+
+Based on the company domain and industry, write specific insights about:
+1. What AI tools their team likely uses
+2. What data they handle that is sensitive
+3. Why SecureAI Gateway solves their specific problem
+
+Return JSON: {{"score": 85, "notes": "specific research insights", "industry_refined": "Legal/Healthcare/Finance/IT/etc"}}
+Return only JSON."""
+
+    try:
+        research_result = agent.think(research_prompt)
+        import json as json_mod
+        research = json_mod.loads(research_result.replace("```json","").replace("```","").strip())
+        score = research.get("score", 75)
+        notes = f"[{title}] {research.get('notes', '')}" if title else research.get("notes", "Manually added lead")
+        industry = research.get("industry_refined", industry)
+    except:
+        score = 75
+        notes = f"Manually added by Jayraj. {note}"
+
+    # Save lead
+    new_lead = Lead(
+        company=company_name,
+        contact_name=contact_name,
+        email=email,
+        industry=industry,
+        country=country,
+        score=score,
+        status="new",
+        notes=notes,
+        created_at=datetime.utcnow()
+    )
+    db.add(new_lead)
+    db.commit()
+    db.refresh(new_lead)
+
+    # Generate and send personalised email
+    lead_dict = {
+        "company": company_name,
+        "contact_name": contact_name,
+        "title": title,
+        "email": email,
+        "industry": industry,
+        "country": country,
+        "notes": notes
+    }
+
+    email_content = agent.generate_email(lead_dict)
+    agent.close()
+
+    try:
+        resend.api_key = os.getenv("RESEND_API_KEY", "")
+        plain_body = email_content.get("body", "")
+        response = resend.Emails.send({
+            "from": f"Alex - SecureAI Gateway <{os.getenv('ZOHO_EMAIL','sales@aventrixtechnologies.com')}>",
+            "to": [email],
+            "subject": email_content.get("subject", f"AI security for {company_name}"),
+            "text": plain_body,
+            "reply_to": os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com"),
+            "tags": [{"name": "lead_id", "value": str(new_lead.id)}, {"name": "manual", "value": "true"}]
+        })
+        email_sent = bool(response.get("id"))
+        if email_sent:
+            new_lead.status = "contacted"
+            email_record = Email(
+                lead_id=new_lead.id,
+                subject=email_content.get("subject", ""),
+                body=plain_body,
+                status="sent",
+                sent_at=datetime.utcnow()
+            )
+            db.add(email_record)
+            db.commit()
+    except Exception as e:
+        email_sent = False
+        print(f"[MANUAL LEAD] Email error: {e}")
+
+    return {
+        "success": True,
+        "lead": {
+            "id": new_lead.id,
+            "name": contact_name,
+            "company": company_name,
+            "email": email,
+            "industry": industry,
+            "score": score,
+            "title": title
+        },
+        "email_sent": email_sent,
+        "email_preview": {
+            "subject": email_content.get("subject", ""),
+            "body": email_content.get("body", "")[:300] + "..."
+        },
+        "message": f"Lead added and email sent to {email}" if email_sent else f"Lead added but email failed"
+    }
+
+@app.post("/api/leads/{lead_id}/mark-demo")
+def mark_demo_booked(lead_id: int, db: DBSession = Depends(get_db)):
+    """Mark a lead as demo booked"""
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        return {"success": False, "error": "Lead not found"}
+    lead.status = "demo_booked"
+    activity = LeadActivity(
+        lead_id=lead_id,
+        activity="Demo Booked",
+        description=f"Demo booked with {lead.contact_name} at {lead.company}",
+        created_at=datetime.utcnow()
+    )
+    db.add(activity)
+    # Update metrics
+    metrics = db.query(Metric).first()
+    if metrics:
+        metrics.demos_booked += 1
+        db.commit()
+    db.commit()
+    # WhatsApp celebration
+    try:
+        from whatsapp import send_whatsapp
+        send_whatsapp(f"DEMO BOOKED with {lead.contact_name} at {lead.company}! First step to first customer.")
+    except: pass
+    return {"success": True, "message": f"Demo booked with {lead.contact_name} at {lead.company}"}
+
+@app.post("/api/leads/{lead_id}/mark-won")
+def mark_won(lead_id: int, db: DBSession = Depends(get_db)):
+    """Mark a lead as won — first customer!"""
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        return {"success": False, "error": "Lead not found"}
+    lead.status = "won"
+    db.commit()
+    try:
+        from whatsapp import send_whatsapp
+        send_whatsapp(f"FIRST CUSTOMER WON! {lead.contact_name} at {lead.company}. Aventrix Technologies has revenue!")
+    except: pass
+    return {"success": True, "message": f"Congratulations! {lead.company} is now a customer!"}
+
 @app.post("/api/contact")
 async def submit_contact(request: Request):
     """Website contact form — instant response, WhatsApp notify"""

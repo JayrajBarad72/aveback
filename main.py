@@ -730,15 +730,22 @@ def cleanup_leads(db: DBSession = Depends(get_db)):
 
 @app.get("/api/outreach/test-smtp")
 def test_smtp():
-    """Test Resend API connection"""
+    """Test Resend API by sending a test email"""
     import resend
     api_key = os.getenv("RESEND_API_KEY", "")
     if not api_key:
-        return {"success": False, "error": "RESEND_API_KEY not set. Get free key at resend.com"}
+        return {"success": False, "error": "RESEND_API_KEY not set"}
     resend.api_key = api_key
     try:
-        domains = resend.Domains.list()
-        return {"success": True, "message": "Resend API connected", "key_prefix": api_key[:8]+"..."}
+        response = resend.Emails.send({
+            "from": "onboarding@resend.dev",
+            "to": ["jayraj727272@gmail.com"],
+            "subject": "Aventrix AI HQ - Email Test",
+            "text": "Email system working! Alex is ready to send outreach emails."
+        })
+        if response.get("id"):
+            return {"success": True, "message": "Test email sent to jayraj727272@gmail.com", "id": response["id"]}
+        return {"success": False, "error": str(response)}
     except Exception as e:
         return {"success": False, "error": str(e)}
 

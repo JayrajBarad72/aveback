@@ -68,6 +68,7 @@ CRITICAL: Never use em dashes or hyphens in the email body. Write full sentences
 CRITICAL: The signature must be exactly as shown above. Do not add "Team" or change anything.
 
 STRICT RULES:
+- End every email with this exact CTA line: "You can also book a quick 15-minute call directly: aventrixtechnologies.com/contact.html"
 - Never use the word "ensure"
 - Never use "I hope this finds you well" or any variation
 - Never use "I wanted to reach out"
@@ -173,7 +174,8 @@ aventrixtechnologies.com"""
 <td style="vertical-align:top;text-align:right">
   <a href="https://aventrixtechnologies.com/blog.html" style="display:block;font-size:12px;color:#378ADD;text-decoration:none;margin-bottom:6px">Read our Blog</a>
   <a href="https://aventrixtechnologies.com/features.html" style="display:block;font-size:12px;color:#378ADD;text-decoration:none;margin-bottom:6px">Product Features</a>
-  <a href="https://aventrixtechnologies.com/contact.html" style="display:block;font-size:12px;color:#378ADD;text-decoration:none">Book a Demo</a>
+  <a href="https://aventrixtechnologies.com/contact.html" style="display:block;font-size:12px;color:#378ADD;text-decoration:none;margin-bottom:6px">Book a Demo</a>
+  <a href="https://wa.me/919104277272?text=Hi,%20I%20want%20to%20book%20a%20SecureAI%20Gateway%20demo" style="display:block;font-size:12px;color:#25D366;text-decoration:none">WhatsApp Us</a>
 </td>
 </tr>
 </table>

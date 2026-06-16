@@ -200,7 +200,12 @@ aventrixtechnologies.com"""
                 "subject": email_content["subject"],
                 "text": plain_body,
                 "html": html_body,
-                "reply_to": self.email
+                "reply_to": self.email,
+                "tags": [
+                    {"name": "lead_id", "value": str(lead_id)},
+                    {"name": "industry", "value": lead.industry or "unknown"},
+                    {"name": "company", "value": (lead.company or "unknown")[:50]}
+                ]
             })
             if not response.get("id"):
                 raise Exception(f"Resend failed: {response}")

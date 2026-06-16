@@ -929,6 +929,107 @@ def reset_ceo_memory(db: DBSession = Depends(get_db)):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+
+# ── Email Analytics & Tracking ───────────────────────────
+@app.post("/api/email/webhook")
+async def resend_webhook(request: Request, db: DBSession = Depends(get_db)):
+    """Resend webhook — tracks email opens, clicks, bounces"""
+    try:
+        data = await request.json()
+        event_type = data.get("type", "")
+        email_id = data.get("data", {}).get("email_id", "")
+        to_email = data.get("data", {}).get("to", [""])[0] if data.get("data", {}).get("to") else ""
+
+        print(f"[WEBHOOK] {event_type} — {to_email} — id:{email_id}")
+
+        # Find the lead by email
+        lead = db.query(Lead).filter(Lead.email == to_email).first()
+
+        if event_type == "email.opened":
+            db.add(AgentLog(agent_name="Email Tracker", action="opened",
+                result=f"Email opened by {to_email}", status="success", created_at=datetime.utcnow()))
+            if lead and lead.status == "contacted":
+                lead.status = "opened"
+                # WhatsApp alert for first open
+                try:
+                    from whatsapp import send_whatsapp
+                    send_whatsapp(f"Email opened by {lead.contact_name} at {lead.company} ({to_email}). Good time to follow up!")
+                except: pass
+
+        elif event_type == "email.clicked":
+            db.add(AgentLog(agent_name="Email Tracker", action="clicked",
+                result=f"Link clicked by {to_email}", status="success", created_at=datetime.utcnow()))
+            if lead:
+                lead.status = "replied"
+                try:
+                    from whatsapp import send_whatsapp
+                    send_whatsapp(f"LINK CLICKED by {lead.contact_name} at {lead.company}! They clicked in the email. Follow up NOW.")
+                except: pass
+
+        elif event_type == "email.bounced":
+            db.add(AgentLog(agent_name="Email Tracker", action="bounced",
+                result=f"Email bounced: {to_email}", status="error", created_at=datetime.utcnow()))
+            if lead:
+                lead.status = "bounced"
+
+        elif event_type == "email.complained":
+            db.add(AgentLog(agent_name="Email Tracker", action="spam",
+                result=f"Marked as spam: {to_email}", status="error", created_at=datetime.utcnow()))
+            if lead:
+                lead.status = "lost"
+
+        db.commit()
+        return {"received": True}
+    except Exception as e:
+        print(f"[WEBHOOK] Error: {e}")
+        return {"received": True}
+
+@app.get("/api/email/analytics")
+def get_email_analytics(db: DBSession = Depends(get_db)):
+    """Email performance analytics"""
+    try:
+        from database import Email as EmailModel
+        total_sent = db.query(EmailModel).count()
+        total_leads = db.query(Lead).count()
+        contacted = db.query(Lead).filter(Lead.status == "contacted").count()
+        opened = db.query(Lead).filter(Lead.status == "opened").count()
+        clicked = db.query(Lead).filter(Lead.status == "replied").count()
+        bounced = db.query(Lead).filter(Lead.status == "bounced").count()
+        qualified = db.query(Lead).filter(Lead.status == "qualified").count()
+
+        open_rate = round((opened / total_sent * 100), 1) if total_sent > 0 else 0
+        click_rate = round((clicked / total_sent * 100), 1) if total_sent > 0 else 0
+        bounce_rate = round((bounced / total_sent * 100), 1) if total_sent > 0 else 0
+
+        # Recent email events
+        events = db.query(AgentLog).filter(
+            AgentLog.agent_name == "Email Tracker"
+        ).order_by(AgentLog.created_at.desc()).limit(20).all()
+
+        return {
+            "summary": {
+                "total_leads": total_leads,
+                "total_sent": total_sent,
+                "contacted": contacted,
+                "opened": opened,
+                "clicked": clicked,
+                "bounced": bounced,
+                "demos_booked": qualified,
+                "open_rate": f"{open_rate}%",
+                "click_rate": f"{click_rate}%",
+                "bounce_rate": f"{bounce_rate}%"
+            },
+            "recent_events": [
+                {
+                    "action": e.action,
+                    "detail": e.result,
+                    "time": str(e.created_at)
+                } for e in events
+            ]
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.post("/api/contact")
 async def submit_contact(request: Request):
     """Website contact form — instant response, WhatsApp notify"""

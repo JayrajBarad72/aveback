@@ -727,6 +727,57 @@ def cleanup_leads(db: DBSession = Depends(get_db)):
     db.commit()
     return {"deleted": deleted, "message": f"Removed {deleted} low-quality leads"}
 
+
+@app.get("/api/outreach/test-smtp")
+def test_smtp():
+    """Test SMTP connection to ZeptoMail"""
+    import smtplib, ssl, os
+    host = os.getenv("ZOHO_SMTP_HOST", "smtp.zeptomail.in")
+    port = int(os.getenv("ZOHO_SMTP_PORT", 465))
+    password = os.getenv("ZOHO_APP_PASSWORD", "")
+    email = os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com")
+    
+    if not password:
+        return {"success": False, "error": "ZOHO_APP_PASSWORD not set in Render environment"}
+    
+    try:
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP_SSL(host, port, context=ctx, timeout=15) as server:
+            server.login("emailapikey", password)
+        return {"success": True, "message": f"SMTP connected to {host}:{port}", "email": email}
+    except Exception as e:
+        return {"success": False, "error": str(e), "host": host, "port": port}
+
+@app.post("/api/outreach/send-test-email")
+async def send_test_email(request: Request):
+    """Send a test email to verify outreach works"""
+    data = await request.json()
+    to_email = data.get("to", "jayraj727272@gmail.com")
+    
+    import smtplib, ssl, os
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    
+    host = os.getenv("ZOHO_SMTP_HOST", "smtp.zeptomail.in")
+    port = int(os.getenv("ZOHO_SMTP_PORT", 465))
+    password = os.getenv("ZOHO_APP_PASSWORD", "")
+    from_email = os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com")
+    
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Test email from Aventrix AI HQ"
+        msg["From"] = f"SecureAI Gateway <{from_email}>"
+        msg["To"] = to_email
+        msg.attach(MIMEText("This is a test email from Alex, your AI CEO. Outreach system is working!", "plain"))
+        
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP_SSL(host, port, context=ctx, timeout=15) as server:
+            server.login("emailapikey", password)
+            server.sendmail(from_email, to_email, msg.as_string())
+        return {"success": True, "message": f"Test email sent to {to_email}"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @app.post("/api/contact")
 async def submit_contact(request: Request):
     """Website contact form — instant response, WhatsApp notify"""

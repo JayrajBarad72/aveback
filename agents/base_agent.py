@@ -6,6 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ── Model config — change here to upgrade all agents at once ──
+CLAUDE_MODEL = "claude-sonnet-4-5"
+
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 COMPANY_CONTEXT = """
@@ -36,7 +39,7 @@ class BaseAgent:
     def think(self, prompt: str, system_extra: str = "") -> str:
         system = system_extra if system_extra else COMPANY_CONTEXT
         message = client.messages.create(
-            model="claude-sonnet-4-5",
+            model=CLAUDE_MODEL,
             max_tokens=1000,
             system=system,
             messages=[{"role": "user", "content": prompt}]

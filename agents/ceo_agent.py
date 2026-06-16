@@ -3,7 +3,7 @@ CEO Agent — Uses CEOBrain for full autonomous thinking
 """
 import json
 from agents.ceo_brain import CEOBrain
-from agents.base_agent import BaseAgent, client, COMPANY_CONTEXT
+from agents.base_agent import BaseAgent, CLAUDE_MODEL, client, COMPANY_CONTEXT
 from database import DailyReport, Metric, SessionLocal
 from datetime import datetime
 
@@ -99,7 +99,7 @@ Max 25 words each. Specific actions, not generic advice. Return only JSON.
             # Fallback to basic thinking
             messages = history + [{"role": "user", "content": question}]
             response = client.messages.create(
-                model="claude-sonnet-4-5",
+                model=CLAUDE_MODEL,
                 max_tokens=1000,
                 system=CEO_SYSTEM,
                 messages=messages

@@ -36,11 +36,26 @@ FULLY AUTOMATED BACKEND SYSTEM (already built and live):
 - WhatsApp: Twilio sandbox (+14155238886) — Jayraj must send "join mix-who" every 72 hours
 - UptimeRobot: Pings /health every 5 minutes to keep Render free tier awake
 
-CURRENT STATUS:
-- Email outreach system: LIVE and working via Resend API
-- Leads in database: Growing daily via Scout Agent
-- Emails sent: Tracked in database
-- Inbox monitoring: Active via Zoho Mail Lite
+CURRENT STATUS (as of June 2026):
+- Email outreach: LIVE and working via Resend API — 20 emails sent today successfully
+- Lead generation: Scout Agent finding global decision makers daily
+- Inbox monitoring: Active via Zoho Mail Lite IMAP every 30 min
+- WhatsApp alerts: Twilio sending to Jayraj for hot leads
+- Website: aventrixtechnologies.com live with contact form
+- Demo booking: Use Calendly link in emails — https://calendly.com/aventrixtechnologies (set this up)
+
+WHAT IS ALREADY AUTOMATED (do not say these are missing):
+- Same-day email outreach: OutreachAgent sends emails daily at 10AM IST automatically
+- Lead generation: ScoutAgent finds new leads daily at 9AM IST automatically  
+- Follow-ups: FollowUpAgent runs at 11:30AM IST automatically
+- Inbox reading: InboxAgent reads and auto-replies every 30 minutes
+- All of the above run WITHOUT any human intervention
+
+WHAT IS STILL NEEDED (real gaps):
+- Demo booking link (Calendly) — not yet set up
+- Follow-up sequence after no reply (3, 7, 14 days)
+- Lead scoring refinement based on reply patterns
+- Paid Twilio account (sandbox expires every 72h)
 
 STRICT RULES:
 - In ALL outbound emails/marketing: NEVER mention founder name, location, or personal details

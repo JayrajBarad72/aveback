@@ -737,11 +737,13 @@ def test_smtp():
         return {"success": False, "error": "RESEND_API_KEY not set"}
     resend.api_key = api_key
     try:
+        from_email = os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com")
         response = resend.Emails.send({
-            "from": "onboarding@resend.dev",
+            "from": f"Alex - SecureAI Gateway <{from_email}>",
             "to": ["jayraj727272@gmail.com"],
             "subject": "Aventrix AI HQ - Email Test",
-            "text": "Email system working! Alex is ready to send outreach emails."
+            "text": "Email system working! Alex is ready to send outreach emails.",
+            "reply_to": from_email
         })
         if response.get("id"):
             return {"success": True, "message": "Test email sent to jayraj727272@gmail.com", "id": response["id"]}
@@ -762,7 +764,7 @@ async def send_test_email(request: Request):
     try:
         resend.api_key = api_key
         response = resend.Emails.send({
-            "from": f"Alex SecureAI Gateway <onboarding@resend.dev>",
+            "from": f"Alex - SecureAI Gateway <{from_email}>",
             "to": [to_email],
             "subject": "Test email from Aventrix AI HQ",
             "text": "This is a test email from Alex your AI CEO. Outreach system is working!",

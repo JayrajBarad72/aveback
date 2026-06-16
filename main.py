@@ -935,7 +935,28 @@ def reset_ceo_memory(db: DBSession = Depends(get_db)):
 async def resend_webhook(request: Request, db: DBSession = Depends(get_db)):
     """Resend webhook — tracks email opens, clicks, bounces"""
     try:
-        data = await request.json()
+        # Verify webhook signature if secret is set
+        secret = os.getenv("RESEND_WEBHOOK_SECRET", "")
+        if secret:
+            import hmac, hashlib
+            body = await request.body()
+            sig_header = request.headers.get("svix-signature", "")
+            ts_header = request.headers.get("svix-timestamp", "")
+            msg_id = request.headers.get("svix-id", "")
+            if sig_header and ts_header:
+                to_sign = f"{msg_id}.{ts_header}.{body.decode()}"
+                expected = hmac.new(
+                    secret.replace("whsec_", "").encode(),
+                    to_sign.encode(),
+                    hashlib.sha256
+                ).hexdigest()
+                sigs = [s.split(",",1)[1] for s in sig_header.split(" ") if "," in s]
+                if not any(hmac.compare_digest(f"v1,{expected}", f"v1,{s}") for s in sigs):
+                    print("[WEBHOOK] Invalid signature")
+                    return {"received": False}
+            data = json.loads(body)
+        else:
+            data = await request.json()
         event_type = data.get("type", "")
         email_id = data.get("data", {}).get("email_id", "")
         to_email = data.get("data", {}).get("to", [""])[0] if data.get("data", {}).get("to") else ""

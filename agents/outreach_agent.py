@@ -14,10 +14,11 @@ load_dotenv()
 class OutreachAgent(BaseAgent):
     def __init__(self):
         super().__init__("Outreach Agent", "Email Sender")
-        self.smtp_host = os.getenv("ZOHO_SMTP_HOST", "smtp.zeptomail.in")
-        self.smtp_port = int(os.getenv("ZOHO_SMTP_PORT", 465))
-        self.email     = os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com")
-        self.password  = os.getenv("ZOHO_APP_PASSWORD")
+        self.email    = os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com")
+        self.password = os.getenv("ZOHO_EMAIL_PASSWORD", "Jasy@7272")  # Zoho Mail password
+        # Use Zoho Mail SMTP directly - already verified working
+        self.smtp_host = "smtp.zoho.in"
+        self.smtp_port = 465
 
     def generate_email(self, lead: dict) -> dict:
         contact = lead.get("contact_name") or "there"
@@ -198,7 +199,7 @@ aventrixtechnologies.com"""
             try:
                 context = ssl.create_default_context()
                 with smtplib.SMTP_SSL(self.smtp_host, 465, context=context, timeout=20) as server:
-                    server.login("emailapikey", self.password)
+                    server.login(self.email, self.password)
                     server.sendmail(self.email, lead.email, msg.as_string())
                 sent = True
                 self.log("send_email", f"Sent via SSL port 465")
@@ -212,7 +213,7 @@ aventrixtechnologies.com"""
                     with smtplib.SMTP(self.smtp_host, 587, timeout=20) as server:
                         server.ehlo()
                         server.starttls()
-                        server.login("emailapikey", self.password)
+                        server.login(self.email, self.password)
                         server.sendmail(self.email, lead.email, msg.as_string())
                     sent = True
                     self.log("send_email", f"Sent via TLS port 587")

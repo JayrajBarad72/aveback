@@ -730,38 +730,33 @@ def cleanup_leads(db: DBSession = Depends(get_db)):
 
 @app.get("/api/outreach/test-smtp")
 def test_smtp():
-    """Test SMTP connection to ZeptoMail"""
+    """Test SMTP connection"""
     import smtplib, ssl, os
-    host = os.getenv("ZOHO_SMTP_HOST", "smtp.zeptomail.in")
-    port = int(os.getenv("ZOHO_SMTP_PORT", 465))
-    password = os.getenv("ZOHO_APP_PASSWORD", "")
     email = os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com")
+    password = os.getenv("ZOHO_EMAIL_PASSWORD", "Jasy@7272")
     
     if not password:
-        return {"success": False, "error": "ZOHO_APP_PASSWORD not set in Render environment"}
+        return {"success": False, "error": "ZOHO_EMAIL_PASSWORD not set"}
     
     results = {}
-    # Try port 465 SSL
-    try:
-        ctx = ssl.create_default_context()
-        with smtplib.SMTP_SSL(host, 465, context=ctx, timeout=10) as server:
-            server.login("emailapikey", password)
-        results["port_465"] = "SUCCESS"
-    except Exception as e:
-        results["port_465"] = str(e)
-    
-    # Try port 587 TLS
-    try:
-        with smtplib.SMTP(host, 587, timeout=10) as server:
-            server.ehlo()
-            server.starttls()
-            server.login("emailapikey", password)
-        results["port_587"] = "SUCCESS"
-    except Exception as e:
-        results["port_587"] = str(e)
+    hosts = [("smtp.zoho.in", 465, "SSL"), ("smtp.zoho.com", 465, "SSL"), ("smtp.zoho.in", 587, "TLS")]
+    for host, port, mode in hosts:
+        try:
+            ctx = ssl.create_default_context()
+            if mode == "SSL":
+                with smtplib.SMTP_SSL(host, port, context=ctx, timeout=10) as server:
+                    server.login(email, password)
+            else:
+                with smtplib.SMTP(host, port, timeout=10) as server:
+                    server.starttls()
+                    server.login(email, password)
+            results[f"{host}:{port}"] = "SUCCESS"
+            break
+        except Exception as e:
+            results[f"{host}:{port}"] = str(e)
     
     success = "SUCCESS" in results.values()
-    return {"success": success, "password_set": bool(password), "email": email, "results": results}
+    return {"success": success, "email": email, "results": results}
 
 @app.post("/api/outreach/send-test-email")
 async def send_test_email(request: Request):
@@ -773,10 +768,10 @@ async def send_test_email(request: Request):
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
     
-    host = os.getenv("ZOHO_SMTP_HOST", "smtp.zeptomail.in")
-    port = int(os.getenv("ZOHO_SMTP_PORT", 465))
-    password = os.getenv("ZOHO_APP_PASSWORD", "")
     from_email = os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com")
+    password = os.getenv("ZOHO_EMAIL_PASSWORD", "Jasy@7272")
+    host = "smtp.zoho.in"
+    port = 465
     
     try:
         msg = MIMEMultipart("alternative")
@@ -787,7 +782,7 @@ async def send_test_email(request: Request):
         
         ctx = ssl.create_default_context()
         with smtplib.SMTP_SSL(host, port, context=ctx, timeout=15) as server:
-            server.login("emailapikey", password)
+            server.login(from_email, password)
             server.sendmail(from_email, to_email, msg.as_string())
         return {"success": True, "message": f"Test email sent to {to_email}"}
     except Exception as e:

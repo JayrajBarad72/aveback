@@ -188,39 +188,22 @@ aventrixtechnologies.com"""
 </html>"""
             msg.attach(MIMEText(html_body, "html"))
 
-            # Send via SSL - try port 465 first, fallback to 587 TLS
-            sent = False
-            last_error = None
-            
-            # Try SSL on port 465
-            try:
-                context = ssl.create_default_context()
-                with smtplib.SMTP_SSL(self.smtp_host, 465, context=context, timeout=20) as server:
-                    server.login(self.email, self.password)
-                    server.sendmail(self.email, lead.email, msg.as_string())
-                sent = True
-                self.log("send_email", f"Sent via SSL port 465")
-            except Exception as e1:
-                last_error = str(e1)
-                self.log("send_email", f"Port 465 failed: {e1}, trying 587...")
-                
-            # Fallback: TLS on port 587
-            if not sent:
-                try:
-                    with smtplib.SMTP(self.smtp_host, 587, timeout=20) as server:
-                        server.ehlo()
-                        server.starttls()
-                        server.login(self.email, self.password)
-                        server.sendmail(self.email, lead.email, msg.as_string())
-                    sent = True
-                    self.log("send_email", f"Sent via TLS port 587")
-                except Exception as e2:
-                    last_error = f"465: {last_error} | 587: {str(e2)}"
-            
-            if not sent:
-                raise Exception(f"All SMTP attempts failed: {last_error}")
+            # Send via Resend API (HTTP - works on Render, SMTP is blocked)
+            import resend
+            resend.api_key = self.resend_key
+            response = resend.Emails.send({
+                "from": f"Alex - SecureAI Gateway <{self.email}>",
+                "to": [lead.email],
+                "subject": email_content["subject"],
+                "text": plain_body,
+                "html": html_body,
+                "reply_to": self.email
+            })
+            if not response.get("id"):
+                raise Exception(f"Resend failed: {response}")
+            self.log("send_email", f"Sent via Resend to {lead.email} id={response['id']}")
 
-            # Save record
+                        # Save record
             email_record = Email(
                 lead_id=lead_id,
                 subject=email_content["subject"],

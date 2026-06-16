@@ -740,13 +740,28 @@ def test_smtp():
     if not password:
         return {"success": False, "error": "ZOHO_APP_PASSWORD not set in Render environment"}
     
+    results = {}
+    # Try port 465 SSL
     try:
         ctx = ssl.create_default_context()
-        with smtplib.SMTP_SSL(host, port, context=ctx, timeout=15) as server:
+        with smtplib.SMTP_SSL(host, 465, context=ctx, timeout=10) as server:
             server.login("emailapikey", password)
-        return {"success": True, "message": f"SMTP connected to {host}:{port}", "email": email}
+        results["port_465"] = "SUCCESS"
     except Exception as e:
-        return {"success": False, "error": str(e), "host": host, "port": port}
+        results["port_465"] = str(e)
+    
+    # Try port 587 TLS
+    try:
+        with smtplib.SMTP(host, 587, timeout=10) as server:
+            server.ehlo()
+            server.starttls()
+            server.login("emailapikey", password)
+        results["port_587"] = "SUCCESS"
+    except Exception as e:
+        results["port_587"] = str(e)
+    
+    success = "SUCCESS" in results.values()
+    return {"success": success, "password_set": bool(password), "email": email, "results": results}
 
 @app.post("/api/outreach/send-test-email")
 async def send_test_email(request: Request):

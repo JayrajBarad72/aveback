@@ -42,7 +42,7 @@ CURRENT STATUS (as of June 2026):
 - Inbox monitoring: Active via Zoho Mail Lite IMAP every 30 min
 - WhatsApp alerts: Twilio sending to Jayraj for hot leads
 - Website: aventrixtechnologies.com live with contact form
-- Demo booking: WhatsApp direct link in emails — https://wa.me/919104277272?text=Hi,%20I%20want%20to%20book%20a%20SecureAI%20Gateway%20demo
+- Demo booking Calendly: https://calendly.com/aventrixtechnologies-info
 
 WHAT IS ALREADY AUTOMATED (do not say these are missing):
 - Same-day email outreach: OutreachAgent sends emails daily at 10AM IST automatically
@@ -52,7 +52,7 @@ WHAT IS ALREADY AUTOMATED (do not say these are missing):
 - All of the above run WITHOUT any human intervention
 
 WHAT IS STILL NEEDED (real gaps):
-- Calendly or formal booking page — optional upgrade later
+- Calendly is SET UP at https://calendly.com/aventrixtechnologies-info — include in every email
 - Follow-up sequence after no reply (3, 7, 14 days)
 - Lead scoring refinement based on reply patterns
 - Paid Twilio account (sandbox expires every 72h)

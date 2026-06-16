@@ -175,9 +175,113 @@ def get_team_instructions():
     except Exception as e:
         return {"instructions": []}
 
+
+# ── CEO Chat History ─────────────────────────────────────
+@app.get("/api/ceo/chat/history")
+def get_chat_history(db: DBSession = Depends(get_db)):
+    """Get all chat messages between Jayraj and Alex"""
+    try:
+        logs = db.query(AgentLog).filter(
+            AgentLog.agent_name == "CEO Chat"
+        ).order_by(AgentLog.created_at.asc()).limit(200).all()
+        
+        messages = []
+        for log in logs:
+            try:
+                msg = json.loads(log.result)
+                messages.append(msg)
+            except:
+                pass
+        return {"messages": messages}
+    except Exception as e:
+        return {"messages": [], "error": str(e)}
+
+@app.post("/api/ceo/chat/save")
+async def save_chat_message(request: Request, db: DBSession = Depends(get_db)):
+    """Save a chat message to history"""
+    try:
+        data = await request.json()
+        role = data.get("role", "user")
+        content_text = data.get("content", "")
+        
+        db.add(AgentLog(
+            agent_name="CEO Chat",
+            action=role,
+            result=json.dumps({
+                "role": role,
+                "content": content_text,
+                "timestamp": datetime.utcnow().isoformat()
+            }),
+            status="success",
+            created_at=datetime.utcnow()
+        ))
+        db.commit()
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.delete("/api/ceo/chat/clear")
+def clear_chat_history(db: DBSession = Depends(get_db)):
+    """Clear all chat history"""
+    db.query(AgentLog).filter(AgentLog.agent_name == "CEO Chat").delete()
+    db.commit()
+    return {"success": True}
+
 @app.post("/api/ceo/chat")
-def ceo_chat(msg: ChatMessage):
-    ceo = CEOAgent(); a = ceo.answer_question(msg.message, msg.history); ceo.close(); return {"reply": a}
+def ceo_chat(msg: ChatMessage, db: DBSession = Depends(get_db)):
+    try:
+        # Load full chat history from DB
+        logs = db.query(AgentLog).filter(
+            AgentLog.agent_name == "CEO Chat"
+        ).order_by(AgentLog.created_at.asc()).limit(100).all()
+        
+        full_history = []
+        for log in logs:
+            try:
+                m = json.loads(log.result)
+                full_history.append({"role": m["role"], "content": m["content"]})
+            except:
+                pass
+        
+        # Add current message
+        full_history.append({"role": "user", "content": msg.message})
+        
+        # Save user message
+        db.add(AgentLog(
+            agent_name="CEO Chat",
+            action="user",
+            result=json.dumps({
+                "role": "user",
+                "content": msg.message,
+                "timestamp": datetime.utcnow().isoformat()
+            }),
+            status="success",
+            created_at=datetime.utcnow()
+        ))
+        db.commit()
+        
+        # Get Alex's reply with full history
+        ceo = CEOAgent()
+        reply = ceo.answer_question(msg.message, full_history[:-1])
+        ceo.close()
+        
+        # Save Alex's reply
+        db.add(AgentLog(
+            agent_name="CEO Chat",
+            action="assistant",
+            result=json.dumps({
+                "role": "assistant",
+                "content": reply,
+                "timestamp": datetime.utcnow().isoformat()
+            }),
+            status="success",
+            created_at=datetime.utcnow()
+        ))
+        db.commit()
+        
+        return {"reply": reply}
+    except Exception as e:
+        return {"reply": f"Alex is thinking... ({str(e)[:100]})"}
 
 # ── Scout / Leads ─────────────────────────────────────────
 @app.post("/api/scout/search")

@@ -14,11 +14,8 @@ load_dotenv()
 class OutreachAgent(BaseAgent):
     def __init__(self):
         super().__init__("Outreach Agent", "Email Sender")
-        self.email    = os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com")
-        self.password = os.getenv("ZOHO_EMAIL_PASSWORD", "Jasy@7272")  # Zoho Mail password
-        # Use Zoho Mail SMTP directly - already verified working
-        self.smtp_host = "smtp.zoho.in"
-        self.smtp_port = 465
+        self.email      = os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com")
+        self.resend_key = os.getenv("RESEND_API_KEY", "")
 
     def generate_email(self, lead: dict) -> dict:
         contact = lead.get("contact_name") or "there"

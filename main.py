@@ -760,31 +760,28 @@ def test_smtp():
 
 @app.post("/api/outreach/send-test-email")
 async def send_test_email(request: Request):
-    """Send a test email to verify outreach works"""
+    """Send a test email via Resend API"""
+    import resend
     data = await request.json()
     to_email = data.get("to", "jayraj727272@gmail.com")
-    
-    import smtplib, ssl, os
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
-    
     from_email = os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com")
-    password = os.getenv("ZOHO_EMAIL_PASSWORD", "Jasy@7272")
-    host = "smtp.zoho.in"
-    port = 465
+    api_key = os.getenv("RESEND_API_KEY", "")
+    
+    if not api_key:
+        return {"success": False, "error": "RESEND_API_KEY not set. Get free key at resend.com"}
     
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = "Test email from Aventrix AI HQ"
-        msg["From"] = f"SecureAI Gateway <{from_email}>"
-        msg["To"] = to_email
-        msg.attach(MIMEText("This is a test email from Alex, your AI CEO. Outreach system is working!", "plain"))
-        
-        ctx = ssl.create_default_context()
-        with smtplib.SMTP_SSL(host, port, context=ctx, timeout=15) as server:
-            server.login(from_email, password)
-            server.sendmail(from_email, to_email, msg.as_string())
-        return {"success": True, "message": f"Test email sent to {to_email}"}
+        resend.api_key = api_key
+        response = resend.Emails.send({
+            "from": f"Alex - SecureAI Gateway <{from_email}>",
+            "to": [to_email],
+            "subject": "Test email from Aventrix AI HQ",
+            "text": "This is a test email from Alex, your AI CEO. Outreach system is working!",
+            "reply_to": from_email
+        })
+        if response.get("id"):
+            return {"success": True, "message": f"Email sent to {to_email}", "id": response["id"]}
+        return {"success": False, "error": str(response)}
     except Exception as e:
         return {"success": False, "error": str(e)}
 

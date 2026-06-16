@@ -73,7 +73,7 @@ TODAY'S DATE: {datetime.utcnow().strftime('%A, %B %d, %Y')}
 """
         full_prompt = f"{context}\n\n{prompt}"
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-5",
             max_tokens=1500,
             system=CEO_SYSTEM,
             messages=[{"role": "user", "content": full_prompt}]
@@ -410,7 +410,7 @@ MY ACTIVE GOALS:
 {chr(10).join([f"- {g['goal']}: {g['current']}/{g['target']}" for g in goals]) or "Setting goals..."}
 """
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-5",
             max_tokens=1000,
             system=enriched_system,
             messages=messages

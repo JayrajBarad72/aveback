@@ -99,7 +99,7 @@ Max 25 words each. Specific actions, not generic advice. Return only JSON.
             # Fallback to basic thinking
             messages = history + [{"role": "user", "content": question}]
             response = client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-5",
                 max_tokens=1000,
                 system=CEO_SYSTEM,
                 messages=messages

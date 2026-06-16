@@ -135,7 +135,13 @@ def get_activity(db: DBSession = Depends(get_db)):
 # ── CEO ───────────────────────────────────────────────────
 @app.get("/api/ceo/briefing")
 def get_briefing():
-    ceo = CEOAgent(); b = ceo.generate_briefing(); ceo.close(); return {"briefing": b}
+    try:
+        ceo = CEOAgent()
+        b = ceo.generate_briefing()
+        ceo.close()
+        return {"briefing": b}
+    except Exception as e:
+        return {"briefing": f"Alex is thinking... (backend error: {str(e)[:100]}). Click Regenerate to retry."}
 
 @app.post("/api/ceo/run-brain")
 def run_ceo_brain():
@@ -157,11 +163,17 @@ def run_ceo_brain():
 
 @app.get("/api/ceo/priorities")
 def get_priorities():
-    ceo = CEOAgent(); p = ceo.generate_priorities(); ceo.close(); return {"priorities": p}
+    try:
+        ceo = CEOAgent(); p = ceo.generate_priorities(); ceo.close(); return {"priorities": p}
+    except Exception as e:
+        return {"priorities": []}
 
 @app.get("/api/ceo/team-instructions")
 def get_team_instructions():
-    ceo = CEOAgent(); i = ceo.generate_team_instructions(); ceo.close(); return {"instructions": i}
+    try:
+        ceo = CEOAgent(); i = ceo.generate_team_instructions(); ceo.close(); return {"instructions": i}
+    except Exception as e:
+        return {"instructions": []}
 
 @app.post("/api/ceo/chat")
 def ceo_chat(msg: ChatMessage):

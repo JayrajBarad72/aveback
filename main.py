@@ -730,33 +730,17 @@ def cleanup_leads(db: DBSession = Depends(get_db)):
 
 @app.get("/api/outreach/test-smtp")
 def test_smtp():
-    """Test SMTP connection"""
-    import smtplib, ssl, os
-    email = os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com")
-    password = os.getenv("ZOHO_EMAIL_PASSWORD", "Jasy@7272")
-    
-    if not password:
-        return {"success": False, "error": "ZOHO_EMAIL_PASSWORD not set"}
-    
-    results = {}
-    hosts = [("smtp.zoho.in", 465, "SSL"), ("smtp.zoho.com", 465, "SSL"), ("smtp.zoho.in", 587, "TLS")]
-    for host, port, mode in hosts:
-        try:
-            ctx = ssl.create_default_context()
-            if mode == "SSL":
-                with smtplib.SMTP_SSL(host, port, context=ctx, timeout=10) as server:
-                    server.login(email, password)
-            else:
-                with smtplib.SMTP(host, port, timeout=10) as server:
-                    server.starttls()
-                    server.login(email, password)
-            results[f"{host}:{port}"] = "SUCCESS"
-            break
-        except Exception as e:
-            results[f"{host}:{port}"] = str(e)
-    
-    success = "SUCCESS" in results.values()
-    return {"success": success, "email": email, "results": results}
+    """Test Resend API connection"""
+    import resend
+    api_key = os.getenv("RESEND_API_KEY", "")
+    if not api_key:
+        return {"success": False, "error": "RESEND_API_KEY not set. Get free key at resend.com"}
+    resend.api_key = api_key
+    try:
+        domains = resend.Domains.list()
+        return {"success": True, "message": "Resend API connected", "key_prefix": api_key[:8]+"..."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @app.post("/api/outreach/send-test-email")
 async def send_test_email(request: Request):
@@ -766,17 +750,15 @@ async def send_test_email(request: Request):
     to_email = data.get("to", "jayraj727272@gmail.com")
     from_email = os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com")
     api_key = os.getenv("RESEND_API_KEY", "")
-    
     if not api_key:
         return {"success": False, "error": "RESEND_API_KEY not set. Get free key at resend.com"}
-    
     try:
         resend.api_key = api_key
         response = resend.Emails.send({
-            "from": f"Alex - SecureAI Gateway <{from_email}>",
+            "from": f"Alex SecureAI Gateway <onboarding@resend.dev>",
             "to": [to_email],
             "subject": "Test email from Aventrix AI HQ",
-            "text": "This is a test email from Alex, your AI CEO. Outreach system is working!",
+            "text": "This is a test email from Alex your AI CEO. Outreach system is working!",
             "reply_to": from_email
         })
         if response.get("id"):

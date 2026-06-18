@@ -24,6 +24,15 @@ def ceo_brain_cycle():
                 f"Good morning Jayraj! Alex here. Running company operations. Will update you shortly.")
         except: pass
 
+def twilio_reminder_job():
+    """Every 60 hours remind Jayraj to rejoin Twilio sandbox"""
+    try:
+        from whatsapp import send_whatsapp
+        send_whatsapp("Reminder: Twilio sandbox expires every 72 hours.\nSend: join mix-who\nTo: +14155238886 on WhatsApp to keep Alex connected.")
+        logger.info("Twilio reminder sent")
+    except Exception as e:
+        logger.error(f"Twilio reminder error: {e}")
+
 def lead_generation_job():
     logger.info("Scout: Finding global decision-maker leads...")
     try:
@@ -143,6 +152,7 @@ def start_scheduler():
     # Cross-agent coordination — 7:30 AM IST (2 AM UTC) — before CEO briefing
     scheduler.add_job(cross_agent_job, CronTrigger(hour=2, minute=0), id="coordinator")
     # Supabase keepalive — every 5 days
+    scheduler.add_job(twilio_reminder_job, 'interval', hours=60, id='twilio_reminder_job', timezone=ist)
     scheduler.add_job(keepalive_job, "interval", days=5, id="keepalive")
 
     scheduler.start()

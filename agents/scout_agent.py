@@ -207,7 +207,19 @@ class ScoutAgent(BaseAgent):
         all_leads = []
         companies = TARGET_COMPANIES.get(industry, [])
 
-        for domain in companies[:8]:  # Check 8 companies per industry
+        # Skip domains we've already saved qualified leads from, so repeated
+        # runs work through the full target list instead of re-hitting the
+        # same first 8 domains forever.
+        db = self.db
+        done_companies = {
+            (row[0] or "").lower() for row in db.query(Lead.company).filter(Lead.industry == industry).all()
+        }
+
+        pending = [d for d in companies if d.split(".")[0].lower() not in done_companies]
+        if not pending:
+            pending = companies  # exhausted the whole list, start over
+
+        for domain in pending[:8]:  # Check up to 8 not-yet-saved companies per industry
             try:
                 url = "https://api.hunter.io/v2/domain-search"
                 params = {

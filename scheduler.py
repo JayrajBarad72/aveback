@@ -1,10 +1,12 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 import logging
+import pytz
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("scheduler")
 scheduler = BackgroundScheduler()
+ist = pytz.timezone("Asia/Kolkata")
 
 def ceo_brain_cycle():
     """Full CEO brain cycle — runs at 8 AM IST (2:30 AM UTC)"""

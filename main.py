@@ -935,28 +935,18 @@ def reset_ceo_memory(db: DBSession = Depends(get_db)):
 async def resend_webhook(request: Request, db: DBSession = Depends(get_db)):
     """Resend webhook — tracks email opens, clicks, bounces"""
     try:
-        # Verify webhook signature if secret is set
+        body = await request.body()
         secret = os.getenv("RESEND_WEBHOOK_SECRET", "")
         if secret:
-            import hmac, hashlib
-            body = await request.body()
-            sig_header = request.headers.get("svix-signature", "")
-            ts_header = request.headers.get("svix-timestamp", "")
-            msg_id = request.headers.get("svix-id", "")
-            if sig_header and ts_header:
-                to_sign = f"{msg_id}.{ts_header}.{body.decode()}"
-                expected = hmac.new(
-                    secret.replace("whsec_", "").encode(),
-                    to_sign.encode(),
-                    hashlib.sha256
-                ).hexdigest()
-                sigs = [s.split(",",1)[1] for s in sig_header.split(" ") if "," in s]
-                if not any(hmac.compare_digest(f"v1,{expected}", f"v1,{s}") for s in sigs):
-                    print("[WEBHOOK] Invalid signature")
-                    return {"received": False}
-            data = json.loads(body)
+            from svix.webhooks import Webhook, WebhookVerificationError
+            try:
+                wh = Webhook(secret)
+                data = wh.verify(body, dict(request.headers))
+            except WebhookVerificationError as e:
+                print(f"[WEBHOOK] Invalid signature: {e}")
+                return {"received": False}
         else:
-            data = await request.json()
+            data = json.loads(body)
         event_type = data.get("type", "")
         email_id = data.get("data", {}).get("email_id", "")
         to_email = data.get("data", {}).get("to", [""])[0] if data.get("data", {}).get("to") else ""
@@ -998,6 +988,17 @@ async def resend_webhook(request: Request, db: DBSession = Depends(get_db)):
                 result=f"Marked as spam: {to_email}", status="error", created_at=datetime.utcnow()))
             if lead:
                 lead.status = "lost"
+
+        elif event_type == "email.suppressed":
+            db.add(AgentLog(agent_name="Email Tracker", action="suppressed",
+                result=f"Email suppressed (likely prior bounce/complaint): {to_email}", status="error", created_at=datetime.utcnow()))
+            if lead:
+                lead.status = "bounced"
+
+        elif event_type in ("email.sent", "email.delivered", "email.delivery_delayed"):
+            # Informational only — no status change needed, but log for visibility
+            db.add(AgentLog(agent_name="Email Tracker", action=event_type.split(".")[1],
+                result=f"{event_type} — {to_email}", status="success", created_at=datetime.utcnow()))
 
         db.commit()
         return {"received": True}

@@ -194,6 +194,12 @@ aventrixtechnologies.com"""
             # Send via Resend API (HTTP - works on Render, SMTP is blocked)
             import resend
             resend.api_key = self.resend_key
+
+            def sanitize_tag(value: str) -> str:
+                import re
+                value = re.sub(r"[^A-Za-z0-9_-]", "_", value or "")
+                return value[:50] or "unknown"
+
             response = resend.Emails.send({
                 "from": f"Alex - SecureAI Gateway <{self.email}>",
                 "to": [lead.email],
@@ -203,8 +209,8 @@ aventrixtechnologies.com"""
                 "reply_to": self.email,
                 "tags": [
                     {"name": "lead_id", "value": str(lead_id)},
-                    {"name": "industry", "value": lead.industry or "unknown"},
-                    {"name": "company", "value": (lead.company or "unknown")[:50]}
+                    {"name": "industry", "value": sanitize_tag(lead.industry)},
+                    {"name": "company", "value": sanitize_tag(lead.company)}
                 ]
             })
             if not response.get("id"):

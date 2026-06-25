@@ -136,15 +136,86 @@ Return only JSON.
                 return value[:50] or "unknown"
 
             plain_body = email_content.get("body", "")
+            subject_line = email_content.get("subject", "Following up")
+            industry_label = (lead.industry or "Operations").strip()
+
+            body_for_html = plain_body
+            for marker in ("\nAlex\nSecureAI Gateway", "\nAlex,\nSecureAI Gateway", "\n\nAlex"):
+                if marker in body_for_html:
+                    body_for_html = body_for_html.split(marker)[0]
+                    break
+
             paragraphs = "".join(
-                f'<p style="margin:0 0 18px 0;font-size:16px;line-height:1.75;color:#1a1a1a">{p.strip()}</p>'
-                for p in plain_body.split("\n\n") if p.strip()
+                f'<p style="margin:0 0 18px 0;font-size:15.5px;line-height:1.75;color:#2C2840;letter-spacing:0.1px;">{p.strip().replace(chr(10), "<br>")}</p>'
+                for p in body_for_html.split("\n\n") if p.strip()
             )
-            html_body = f"""<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Georgia,serif">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="background:#fff">
-<tr><td style="padding:40px 48px">{paragraphs}</td></tr>
-</table></td></tr></table></body></html>"""
+
+            html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SecureAI Gateway</title>
+</head>
+<body style="margin:0;padding:0;background:#eef0f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#eef0f5;padding:48px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(20,10,50,0.08);">
+
+  <!-- Hero band -->
+  <tr><td style="background:linear-gradient(135deg,#1B0F3A 0%,#3B1670 55%,#5B21B6 100%);padding:34px 44px;">
+    <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIwIiBoZWlnaHQ9IjY0IiB2aWV3Qm94PSIwIDAgMjIwIDY0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJzaGllbGRGaWxsIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzZEMjhEOSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM1QjIxQjYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDIsMikiPgogICAgPHBhdGggZD0iTTI4IDIgTDUyIDExIFYyOSBDNTIgNDUgNDEgNTQgMjggNjAgQzE1IDU0IDQgNDUgNCAyOSBWMTEgWiIKICAgICAgICAgIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0M0QjVGRCIgc3Ryb2tlLXdpZHRoPSIzIi8+CiAgICA8cGF0aCBkPSJNMjggNiBMNDcgMTQgVjI5IEM0NyA0Mi41IDM4IDUwLjUgMjggNTUuNSBDMTggNTAuNSA5IDQyLjUgOSAyOSBWMTQgWiIKICAgICAgICAgIGZpbGw9InVybCgjc2hpZWxkRmlsbCkiIHN0cm9rZT0iI0E3OEJGQSIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KICAgIDxnIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIxLjYiIGZpbGw9IiNGRkZGRkYiPgogICAgICA8bGluZSB4MT0iMjgiIHkxPSIyMiIgeDI9IjIwIiB5Mj0iMzQiLz4KICAgICAgPGxpbmUgeDE9IjI4IiB5MT0iMjIiIHgyPSIzNiIgeTI9IjM0Ii8+CiAgICAgIDxsaW5lIHgxPSIyMCIgeTE9IjM0IiB4Mj0iMzYiIHkyPSIzNCIvPgogICAgICA8Y2lyY2xlIGN4PSIyOCIgY3k9IjIyIiByPSIzLjQiLz4KICAgICAgPGNpcmNsZSBjeD0iMjAiIGN5PSIzNCIgcj0iMy40Ii8+CiAgICAgIDxjaXJjbGUgY3g9IjM2IiBjeT0iMzQiIHI9IjMuNCIvPgogICAgPC9nPgogIDwvZz4KICA8dGV4dCB4PSI2NCIgeT0iMzIiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EsIEFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjIyIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjMUExQTFBIj5TZWN1cmVBSTwvdGV4dD4KICA8dGV4dCB4PSI2NCIgeT0iNDgiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EsIEFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjkiIGZvbnQtd2VpZ2h0PSI1MDAiIGxldHRlci1zcGFjaW5nPSIxLjUiIGZpbGw9IiM3QzNBRUQiPkJZIEFWRU5UUklYIFRFQ0hOT0xPR0lFUzwvdGV4dD4KPC9zdmc+Cg==" width="170" height="49" alt="SecureAI by Aventrix Technologies" style="display:block;filter:brightness(0) invert(1);margin-bottom:22px;">
+    <p style="margin:0 0 10px;font-size:11.5px;font-weight:700;letter-spacing:1.8px;color:#C4B5FD;text-transform:uppercase;">For {industry_label} Leaders</p>
+    <h1 style="margin:0;font-size:24px;line-height:1.4;color:#ffffff;font-weight:700;">
+      {subject_line}
+    </h1>
+  </td></tr>
+
+  <!-- Body copy, AI generated per lead -->
+  <tr><td style="padding:36px 44px 8px;">
+    {paragraphs}
+  </td></tr>
+
+  <!-- CTA block -->
+  <tr><td style="padding:8px 44px 8px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#16121F;border-radius:12px;">
+      <tr><td style="padding:24px 28px;text-align:center;">
+        <p style="margin:0 0 16px;font-size:15.5px;line-height:1.7;color:#ffffff;font-weight:600;">Book a 15-minute demo directly</p>
+        <a href="https://calendly.com/aventrixtechnologies-info" style="display:inline-block;background:#7C3AED;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:13px 32px;border-radius:8px;">Schedule My Demo &rarr;</a>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Signature / link block -->
+  <tr><td style="padding:28px 44px 32px">
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #F0EEF5;padding-top:26px">
+      <tr>
+        <td style="vertical-align:top">
+          <p style="margin:0;font-size:14px;font-weight:700;color:#16121F">Alex</p>
+          <p style="margin:5px 0 4px;font-size:13px;color:#6B6680">SecureAI Gateway | Aventrix Technologies</p>
+          <a href="https://aventrixtechnologies.com" style="font-size:13px;color:#7C3AED;text-decoration:none;font-weight:600;">aventrixtechnologies.com</a>
+        </td>
+        <td style="vertical-align:top;text-align:right">
+          <a href="https://aventrixtechnologies.com/blog.html" style="display:block;font-size:12px;color:#6B6680;text-decoration:none;margin-bottom:8px">Read our Blog</a>
+          <a href="https://aventrixtechnologies.com/features.html" style="display:block;font-size:12px;color:#6B6680;text-decoration:none;margin-bottom:8px">Product Features</a>
+          <a href="https://calendly.com/aventrixtechnologies-info" style="display:inline-block;font-size:12px;color:#ffffff;background:#7C3AED;text-decoration:none;margin-bottom:8px;font-weight:600;padding:7px 14px;border-radius:6px;">Book a 15-Min Demo</a><br>
+          <a href="https://aventrixtechnologies.com/contact.html" style="display:block;font-size:12px;color:#6B6680;text-decoration:none;margin-bottom:8px">Contact Us</a>
+          <a href="https://wa.me/919104277272" style="display:block;font-size:12px;color:#25D366;text-decoration:none;font-weight:600;">WhatsApp</a>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td style="background:#FAFAFC;padding:18px 44px;border-top:1px solid #F0EEF5">
+    <p style="margin:0;font-size:11px;color:#A7A2B8;line-height:1.6;">To unsubscribe reply with unsubscribe and we will remove you immediately.</p>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>"""
 
             response = resend.Emails.send({
                 "from": f"Alex - SecureAI Gateway <{sender_email}>",

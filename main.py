@@ -1078,14 +1078,23 @@ async def add_manual_lead(request: Request, db: DBSession = Depends(get_db)):
     data = await request.json()
     email = data.get("email", "").strip()
     note = data.get("note", "")
+    force = bool(data.get("force", False))
 
     if not email or "@" not in email:
         return {"success": False, "error": "Valid email required"}
 
-    # Check duplicate
+    # Check duplicate, unless force=true (for repeat template testing)
     existing = db.query(Lead).filter(Lead.email == email).first()
-    if existing:
-        return {"success": False, "error": f"Lead already exists: {existing.contact_name} at {existing.company}"}
+    if existing and not force:
+        return {"success": False, "error": f"Lead already exists: {existing.contact_name} at {existing.company}. Pass \"force\": true to resend anyway."}
+    if existing and force:
+        old_id = existing.id
+        db.query(Email).filter(Email.lead_id == old_id).delete()
+        db.query(FollowUp).filter(FollowUp.lead_id == old_id).delete()
+        db.query(LeadActivity).filter(LeadActivity.lead_id == old_id).delete()
+        db.query(LeadNote).filter(LeadNote.lead_id == old_id).delete()
+        db.delete(existing)
+        db.commit()
 
     # Extract domain for research
     domain = email.split("@")[1]

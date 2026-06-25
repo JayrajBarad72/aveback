@@ -163,7 +163,7 @@ Return only JSON.
 <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(20,10,50,0.08);">
 
   <!-- Hero band -->
-  <tr><td style="background:linear-gradient(135deg,#1B0F3A 0%,#3B1670 55%,#5B21B6 100%);padding:34px 44px;">
+  <tr><td bgcolor="#3B1670" style="background-color:#3B1670;background:linear-gradient(135deg,#1B0F3A 0%,#3B1670 55%,#5B21B6 100%);padding:34px 44px;">
     <img src="https://aventrixtechnologies.com/images/secureai-logo-email.png" width="90" height="108" alt="SecureAI by Aventrix Technologies" style="display:block;margin-bottom:22px;border-radius:14px;">
     <p style="margin:0 0 10px;font-size:11.5px;font-weight:700;letter-spacing:1.8px;color:#C4B5FD;text-transform:uppercase;">For {industry_label} Leaders</p>
     <h1 style="margin:0;font-size:24px;line-height:1.4;color:#ffffff;font-weight:700;">

@@ -237,6 +237,16 @@ aventrixtechnologies.com"""
                 db.commit()
 
             self.log("send_email", f"Email sent to {lead.email}")
+
+            # Auto-schedule follow-up sequence now that initial outreach succeeded
+            try:
+                from agents.new_agents import FollowUpAgent
+                fu_agent = FollowUpAgent()
+                fu_agent.schedule_followups(lead_id)
+                fu_agent.close()
+            except Exception as fu_err:
+                self.log("send_email", f"Could not schedule follow-ups: {fu_err}", "error")
+
             return True
 
         except Exception as e:

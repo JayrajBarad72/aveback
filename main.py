@@ -396,6 +396,21 @@ def get_pending_followups(db: DBSession = Depends(get_db)):
     return [{"id":f.id,"lead_id":f.lead_id,"day":f.day_number,
              "scheduled":str(f.scheduled_at),"status":f.status} for f in pending]
 
+@app.post("/api/followup/backfill")
+def backfill_followups(db: DBSession = Depends(get_db)):
+    """One-time catch-up: schedule follow-ups for already-contacted leads
+    that predate the auto-scheduling fix and have none scheduled yet."""
+    contacted = db.query(Lead).filter(Lead.status.in_(["contacted", "opened"])).all()
+    agent = FollowUpAgent()
+    scheduled = 0
+    for lead in contacted:
+        existing = db.query(FollowUp).filter(FollowUp.lead_id == lead.id).first()
+        if not existing:
+            agent.schedule_followups(lead.id)
+            scheduled += 1
+    agent.close()
+    return {"scheduled_for": scheduled}
+
 # ── Qualifier / Booking ───────────────────────────────────
 @app.post("/api/qualifier/qualify/{lead_id}")
 def qualify_lead(lead_id: int):

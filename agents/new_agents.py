@@ -115,6 +115,67 @@ Return only JSON.
         except:
             return {"subject": f"Following up — {lead.company}", "body": result}
 
+    def send_followup_email(self, lead_id: int, email_content: dict) -> bool:
+        """Actually sends the follow-up via Resend, mirroring OutreachAgent.send_email"""
+        db = self.db
+        lead = db.query(Lead).filter(Lead.id == lead_id).first()
+        if not lead or not lead.email:
+            return False
+        try:
+            resend_key = os.getenv("RESEND_API_KEY", "")
+            sender_email = os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com")
+            if not resend_key:
+                self.log("send_followup_email", "Missing RESEND_API_KEY", "error")
+                return False
+
+            import resend, re
+            resend.api_key = resend_key
+
+            def sanitize_tag(value: str) -> str:
+                value = re.sub(r"[^A-Za-z0-9_-]", "_", value or "")
+                return value[:50] or "unknown"
+
+            plain_body = email_content.get("body", "")
+            paragraphs = "".join(
+                f'<p style="margin:0 0 18px 0;font-size:16px;line-height:1.75;color:#1a1a1a">{p.strip()}</p>'
+                for p in plain_body.split("\n\n") if p.strip()
+            )
+            html_body = f"""<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Georgia,serif">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#fff">
+<tr><td style="padding:40px 48px">{paragraphs}</td></tr>
+</table></td></tr></table></body></html>"""
+
+            response = resend.Emails.send({
+                "from": f"Alex - SecureAI Gateway <{sender_email}>",
+                "to": [lead.email],
+                "subject": email_content.get("subject", "Following up"),
+                "text": plain_body,
+                "html": html_body,
+                "reply_to": sender_email,
+                "tags": [
+                    {"name": "lead_id", "value": str(lead_id)},
+                    {"name": "industry", "value": sanitize_tag(lead.industry)},
+                    {"name": "company", "value": sanitize_tag(lead.company)},
+                    {"name": "type", "value": "followup"}
+                ]
+            })
+            if not response.get("id"):
+                raise Exception(f"Resend failed: {response}")
+
+            db.add(Email(
+                lead_id=lead_id,
+                subject=email_content.get("subject", ""),
+                body=plain_body,
+                status="sent",
+                sent_at=datetime.utcnow()
+            ))
+            self.log("send_followup_email", f"Sent via Resend to {lead.email} id={response['id']}")
+            return True
+        except Exception as e:
+            self.log("send_followup_email", str(e), "error")
+            return False
+
     def run_pending_followups(self) -> dict:
         db = self.db
         pending = db.query(FollowUp).filter(
@@ -122,9 +183,15 @@ Return only JSON.
             FollowUp.scheduled_at <= datetime.utcnow()
         ).limit(20).all()
         sent = 0
+        failed = 0
         for fu in pending:
+            # Skip if the lead already moved past "contacted" (e.g. replied, qualified, demo booked)
+            lead = db.query(Lead).filter(Lead.id == fu.lead_id).first()
+            if not lead or lead.status not in ("contacted", "opened"):
+                fu.status = "skipped"
+                continue
             email_content = self.generate_followup_email(fu.lead_id, fu.day_number)
-            if email_content:
+            if email_content and self.send_followup_email(fu.lead_id, email_content):
                 fu.status = "sent"
                 activity = LeadActivity(
                     lead_id=fu.lead_id,
@@ -133,9 +200,12 @@ Return only JSON.
                 )
                 db.add(activity)
                 sent += 1
+            else:
+                fu.status = "failed"
+                failed += 1
         db.commit()
-        self.log("run_pending_followups", f"Sent {sent} follow-ups")
-        return {"sent": sent}
+        self.log("run_pending_followups", f"Sent {sent} follow-ups, {failed} failed")
+        return {"sent": sent, "failed": failed}
 
 
 # ── Proposal Generator ────────────────────────────────────

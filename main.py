@@ -1018,6 +1018,7 @@ def get_email_analytics(db: DBSession = Depends(get_db)):
         clicked = db.query(Lead).filter(Lead.status == "replied").count()
         bounced = db.query(Lead).filter(Lead.status == "bounced").count()
         qualified = db.query(Lead).filter(Lead.status == "qualified").count()
+        demos_booked = db.query(Lead).filter(Lead.status == "demo_booked").count()
 
         open_rate = round((opened / total_sent * 100), 1) if total_sent > 0 else 0
         click_rate = round((clicked / total_sent * 100), 1) if total_sent > 0 else 0
@@ -1036,7 +1037,8 @@ def get_email_analytics(db: DBSession = Depends(get_db)):
                 "opened": opened,
                 "clicked": clicked,
                 "bounced": bounced,
-                "demos_booked": qualified,
+                "qualified": qualified,
+                "demos_booked": demos_booked,
                 "open_rate": f"{open_rate}%",
                 "click_rate": f"{click_rate}%",
                 "bounce_rate": f"{bounce_rate}%"

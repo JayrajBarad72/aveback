@@ -1172,46 +1172,11 @@ Return only JSON."""
     db.commit()
     db.refresh(new_lead)
 
-    # Generate and send personalised email
-    lead_dict = {
-        "company": company_name,
-        "contact_name": contact_name,
-        "title": title,
-        "email": email,
-        "industry": industry,
-        "country": country,
-        "notes": notes
-    }
-
-    email_content = agent.generate_email(lead_dict)
+    # Send via the shared agent method so this uses the same branded HTML
+    # template, Email record, metrics update, and follow-up auto-scheduling
+    # as regular outreach sends — instead of duplicating that logic here.
+    email_sent = agent.send_email(new_lead.id)
     agent.close()
-
-    try:
-        resend.api_key = os.getenv("RESEND_API_KEY", "")
-        plain_body = email_content.get("body", "")
-        response = resend.Emails.send({
-            "from": f"Alex - SecureAI Gateway <{os.getenv('ZOHO_EMAIL','sales@aventrixtechnologies.com')}>",
-            "to": [email],
-            "subject": email_content.get("subject", f"AI security for {company_name}"),
-            "text": plain_body,
-            "reply_to": os.getenv("ZOHO_EMAIL", "sales@aventrixtechnologies.com"),
-            "tags": [{"name": "lead_id", "value": str(new_lead.id)}, {"name": "manual", "value": "true"}]
-        })
-        email_sent = bool(response.get("id"))
-        if email_sent:
-            new_lead.status = "contacted"
-            email_record = Email(
-                lead_id=new_lead.id,
-                subject=email_content.get("subject", ""),
-                body=plain_body,
-                status="sent",
-                sent_at=datetime.utcnow()
-            )
-            db.add(email_record)
-            db.commit()
-    except Exception as e:
-        email_sent = False
-        print(f"[MANUAL LEAD] Email error: {e}")
 
     return {
         "success": True,
@@ -1225,10 +1190,6 @@ Return only JSON."""
             "title": title
         },
         "email_sent": email_sent,
-        "email_preview": {
-            "subject": email_content.get("subject", ""),
-            "body": email_content.get("body", "")[:300] + "..."
-        },
         "message": f"Lead added and email sent to {email}" if email_sent else f"Lead added but email failed"
     }
 

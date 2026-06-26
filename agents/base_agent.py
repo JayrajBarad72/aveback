@@ -83,6 +83,16 @@ class BaseAgent:
         )
         return message.content[0].text
 
+    def think_long(self, prompt: str, system_extra: str = "", max_tokens: int = 3000) -> str:
+        system = system_extra if system_extra else COMPANY_CONTEXT
+        message = client.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return message.content[0].text
+
     def log(self, action: str, result: str, status: str = "success"):
         try:
             entry = AgentLog(

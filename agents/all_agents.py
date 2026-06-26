@@ -94,36 +94,49 @@ class BlogWriterAgent(BaseAgent):
     def write_blog_post(self, topic: str = None) -> dict:
         if not topic:
             topic = self._pick_topic()
-        prompt = f"""
-Write a professional SEO blog post about: {topic}
-Context: For SecureAI Gateway — enterprise AI access control product.
-Structure: Title, Meta Description, Introduction (100w), 3 sections with H2 headings (150w each), Conclusion (80w), CTA.
+        prompt = f"""Write a professional SEO blog post about: {topic}
+Context: For SecureAI Gateway — an on-premise enterprise AI security and DLP product.
 Target audience: IT managers, CISOs, CTOs of mid-size companies.
-Return JSON: {{"title":"...","meta":"...","content":"...","keywords":["...","...","..."]}}
-Return only JSON.
-"""
-        result = self.think(prompt)
+
+Write 600-800 words with a clear title, an introduction, 3 sections with H2 (##) headings, and a short conclusion with a call to action.
+
+Return your answer in EXACTLY this format, using these literal markers on their own lines:
+
+===TITLE===
+(the blog title here, one line)
+===KEYWORDS===
+(5-6 comma-separated SEO keywords, one line)
+===CONTENT===
+(the full markdown blog body here, multiple paragraphs allowed)
+===END==="""
+
+        result = self.think_long(prompt)
         try:
-            clean = result.replace("```json","").replace("```","").strip()
-            # Extract the JSON object even if the model adds prose around it
-            if not clean.startswith("{"):
-                start = clean.find("{")
-                end = clean.rfind("}")
-                if start != -1 and end != -1:
-                    clean = clean[start:end+1]
-            data = json.loads(clean)
+            def between(text, start, end):
+                s = text.find(start)
+                if s == -1: return ""
+                s += len(start)
+                e = text.find(end, s)
+                return (text[s:e] if e != -1 else text[s:]).strip()
+
+            title = between(result, "===TITLE===", "===KEYWORDS===")
+            keywords = between(result, "===KEYWORDS===", "===CONTENT===")
+            content = between(result, "===CONTENT===", "===END===")
+
+            if not title or not content:
+                raise ValueError("Missing title or content in model output")
+
             from database import BlogPost, SessionLocal
             db = SessionLocal()
-            post = BlogPost(title=data["title"], content=data["content"],
-                           keywords=",".join(data.get("keywords",[])), status="published")
+            post = BlogPost(title=title, content=content, keywords=keywords, status="published")
             db.add(post)
             db.commit()
+            pid = post.id
             db.close()
-            self.log("write_blog_post", f"Published: {data['title'][:50]}")
-            data["status"] = "published"
-            return data
+            self.log("write_blog_post", f"Published: {title[:50]}")
+            return {"id": pid, "title": title, "keywords": keywords, "content": content, "status": "published"}
         except Exception as e:
-            self.log("write_blog_post", f"Parse/save failed: {str(e)[:200]}", "error")
+            self.log("write_blog_post", f"Failed: {str(e)[:200]}", "error")
             return {"error": str(e)[:200]}
 
     def _pick_topic(self) -> str:

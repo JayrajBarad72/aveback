@@ -105,19 +105,26 @@ Return only JSON.
         result = self.think(prompt)
         try:
             clean = result.replace("```json","").replace("```","").strip()
+            # Extract the JSON object even if the model adds prose around it
+            if not clean.startswith("{"):
+                start = clean.find("{")
+                end = clean.rfind("}")
+                if start != -1 and end != -1:
+                    clean = clean[start:end+1]
             data = json.loads(clean)
             from database import BlogPost, SessionLocal
             db = SessionLocal()
             post = BlogPost(title=data["title"], content=data["content"],
-                           keywords=",".join(data.get("keywords",[])), status="draft")
+                           keywords=",".join(data.get("keywords",[])), status="published")
             db.add(post)
             db.commit()
             db.close()
-            self.log("write_blog_post", f"Written: {data['title'][:50]}")
+            self.log("write_blog_post", f"Published: {data['title'][:50]}")
+            data["status"] = "published"
             return data
         except Exception as e:
-            self.log("write_blog_post", str(e), "error")
-            return {}
+            self.log("write_blog_post", f"Parse/save failed: {str(e)[:200]}", "error")
+            return {"error": str(e)[:200]}
 
     def _pick_topic(self) -> str:
         topics = [

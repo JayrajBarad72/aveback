@@ -442,6 +442,33 @@ def get_blog_posts(db: DBSession = Depends(get_db)):
     return [{"id":p.id,"title":p.title,"content":p.content,"keywords":p.keywords,
              "status":p.status,"created_at":str(p.created_at)} for p in posts]
 
+@app.post("/api/blog/{post_id}/publish")
+def publish_blog(post_id: int, db: DBSession = Depends(get_db)):
+    post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
+    if not post:
+        return {"success": False, "error": "Post not found"}
+    post.status = "published"
+    db.commit()
+    return {"success": True, "status": "published", "title": post.title}
+
+@app.post("/api/blog/{post_id}/unpublish")
+def unpublish_blog(post_id: int, db: DBSession = Depends(get_db)):
+    post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
+    if not post:
+        return {"success": False, "error": "Post not found"}
+    post.status = "draft"
+    db.commit()
+    return {"success": True, "status": "draft", "title": post.title}
+
+@app.delete("/api/blog/{post_id}")
+def delete_blog(post_id: int, db: DBSession = Depends(get_db)):
+    post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
+    if not post:
+        return {"success": False, "error": "Post not found"}
+    db.delete(post)
+    db.commit()
+    return {"success": True, "deleted": post_id}
+
 @app.get("/api/social/posts")
 def get_social_posts(db: DBSession = Depends(get_db)):
     posts = db.query(SocialPost).order_by(SocialPost.created_at.desc()).limit(30).all()

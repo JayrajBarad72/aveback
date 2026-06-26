@@ -1259,6 +1259,32 @@ async def submit_contact(request: Request):
 
         print(f"[CONTACT] New lead: {name} | {company} | {email} | {phone}")
 
+        # Create a real Lead in the HQ pipeline so website submissions show up
+        # in Sales → All Leads, not just as a log entry.
+        try:
+            db_lead = next(get_db())
+            existing = db_lead.query(Lead).filter(Lead.email == email).first() if email else None
+            if email and not existing:
+                new_lead = Lead(
+                    company=company or (email.split("@")[1].split(".")[0].title() if "@" in email else "Unknown"),
+                    contact_name=name or "Website Visitor",
+                    email=email,
+                    phone=phone,
+                    industry=industry or "Unknown",
+                    status="qualified",
+                    score=90,
+                    notes=f"INBOUND website lead. Interest: {interest}. Size: {size}. Message: {message[:500]}"
+                )
+                db_lead.add(new_lead)
+                db_lead.commit()
+                print(f"[CONTACT] Lead created in pipeline: {email}")
+            elif existing:
+                existing.notes = (existing.notes or "") + f"\n[Website form] Interest: {interest}. {message[:300]}"
+                db_lead.commit()
+            db_lead.close()
+        except Exception as e:
+            print(f"[CONTACT] Lead create error: {e}")
+
         # WhatsApp Jayraj immediately
         try:
             from whatsapp import send_whatsapp

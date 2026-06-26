@@ -220,13 +220,6 @@ aventrixtechnologies.com"""
         <td width="45%" style="vertical-align:top;text-align:right;">
           <a href="https://aventrixtechnologies.com/blog.html" style="display:block;font-size:12px;color:#6B6680;text-decoration:none;margin-bottom:8px">Read our Blog</a>
           <a href="https://aventrixtechnologies.com/features.html" style="display:block;font-size:12px;color:#6B6680;text-decoration:none;margin-bottom:8px">Product Features</a>
-          <table cellpadding="0" cellspacing="0" border="0" role="presentation" align="right" style="margin:0 0 8px;">
-            <tr>
-              <td bgcolor="#7C3AED" style="border-radius:6px;padding:7px 14px;">
-                <a href="https://calendly.com/aventrixtechnologies-info" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;font-weight:600;color:#ffffff;text-decoration:none;white-space:nowrap;">Book a 15-Min Demo</a>
-              </td>
-            </tr>
-          </table>
           <a href="https://aventrixtechnologies.com/contact.html" style="display:block;font-size:12px;color:#6B6680;text-decoration:none;margin-bottom:8px">Contact Us</a>
           <a href="https://wa.me/919104277272" style="display:block;font-size:12px;color:#25D366;text-decoration:none;font-weight:600;">WhatsApp</a>
         </td>

@@ -94,23 +94,40 @@ class BlogWriterAgent(BaseAgent):
     def write_blog_post(self, topic: str = None) -> dict:
         if not topic:
             topic = self._pick_topic()
-        prompt = f"""Write a professional SEO blog post about: {topic}
-Context: For SecureAI Gateway — an on-premise enterprise AI security and DLP product.
-Target audience: IT managers, CISOs, CTOs of mid-size companies.
+        prompt = f"""You are a senior content strategist writing an SEO blog post that should rank on Google's first page.
 
-Write 600-800 words with a clear title, an introduction, 3 sections with H2 (##) headings, and a short conclusion with a call to action.
+TOPIC: {topic}
+PRODUCT CONTEXT: SecureAI Gateway by Aventrix Technologies — an on-premise enterprise AI security and DLP platform. It lets companies give employees Claude, GPT-4o and local AI (Llama, Mistral) with real-time data loss prevention, admin controls, and audit logs. Never claim it has an existing client base.
+READER: An IT manager, CISO, or CTO at a 20-500 employee company in legal, healthcare, finance, IT/MSP, consulting, or manufacturing. They are searching Google for a real problem.
+
+SEO REQUIREMENTS (follow precisely):
+1. Identify the primary keyword phrase a person would Google for this topic. Put it in the title, in the first sentence, and naturally in 2-3 H2 headings.
+2. Title: under 60 characters, compelling, includes the primary keyword. Not clickbait.
+3. First paragraph: answer the core question directly in the first 2 sentences (Google rewards this and it can win a featured snippet).
+4. Length: 900-1200 words. Use 4-5 H2 (##) sections.
+5. Include one short bulleted or numbered list ONLY where it genuinely helps (e.g. a checklist or steps). Do not bullet everything.
+6. Write a meta description: 150-160 characters, includes the keyword, reads like a human wrote it.
+
+WRITING STYLE (critical — must not read like generic AI):
+- Write like an experienced practitioner talking to a peer, not a marketing bot.
+- Vary sentence length. Use specific, concrete examples (a real-sounding scenario, an actual number, a named regulation).
+- Avoid these AI tells: do NOT start sections with "In today's fast-paced world" or "In the ever-evolving landscape." Do NOT overuse bold sub-labels like "**Key Point:**". Do NOT end with "In conclusion." Do NOT use the words "delve", "leverage", "robust", "seamless", "landscape", "realm", "tapestry".
+- Have a point of view. It's fine to be a little opinionated.
+- Mention SecureAI Gateway naturally only once or twice, where it genuinely fits — not as a hard sell in every section. The CTA goes at the very end only.
 
 Return your answer in EXACTLY this format, using these literal markers on their own lines:
 
 ===TITLE===
-(the blog title here, one line)
+(title here, one line, under 60 chars)
+===META===
+(meta description here, one line, 150-160 chars)
 ===KEYWORDS===
-(5-6 comma-separated SEO keywords, one line)
+(6 comma-separated keywords, primary keyword first)
 ===CONTENT===
-(the full markdown blog body here, multiple paragraphs allowed)
+(the full markdown blog body — intro, 4-5 ## sections, natural CTA at the end)
 ===END==="""
 
-        result = self.think_long(prompt)
+        result = self.think_long(prompt, max_tokens=4000)
         try:
             def between(text, start, end):
                 s = text.find(start)
@@ -119,7 +136,8 @@ Return your answer in EXACTLY this format, using these literal markers on their 
                 e = text.find(end, s)
                 return (text[s:e] if e != -1 else text[s:]).strip()
 
-            title = between(result, "===TITLE===", "===KEYWORDS===")
+            title = between(result, "===TITLE===", "===META===")
+            meta = between(result, "===META===", "===KEYWORDS===")
             keywords = between(result, "===KEYWORDS===", "===CONTENT===")
             content = between(result, "===CONTENT===", "===END===")
 
@@ -128,24 +146,53 @@ Return your answer in EXACTLY this format, using these literal markers on their 
 
             from database import BlogPost, SessionLocal
             db = SessionLocal()
-            post = BlogPost(title=title, content=content, keywords=keywords, status="published")
+            # Store meta description at the top of keywords field if BlogPost has no meta column,
+            # so the website can use it. Prefix with META: for easy parsing.
+            kw_field = keywords
+            try:
+                post = BlogPost(title=title, content=content, keywords=keywords,
+                                meta_description=meta, status="published")
+            except TypeError:
+                # BlogPost model has no meta_description column; fold it into content as HTML comment
+                content_with_meta = f"<!--META:{meta}-->\n{content}"
+                post = BlogPost(title=title, content=content_with_meta, keywords=keywords, status="published")
             db.add(post)
             db.commit()
             pid = post.id
             db.close()
             self.log("write_blog_post", f"Published: {title[:50]}")
-            return {"id": pid, "title": title, "keywords": keywords, "content": content, "status": "published"}
+            return {"id": pid, "title": title, "meta": meta, "keywords": keywords, "content": content, "status": "published"}
         except Exception as e:
             self.log("write_blog_post", f"Failed: {str(e)[:200]}", "error")
             return {"error": str(e)[:200]}
 
     def _pick_topic(self) -> str:
+        # Keyword-targeted topics built around real search demand and buyer intent.
+        # Each maps to a phrase prospects actually search, across the 6 target verticals.
         topics = [
-            "Why enterprises need AI access control in 2025",
-            "Top 5 AI security risks every CISO should know",
-            "How to implement DLP for AI tools in your organization",
-            "ChatGPT data leaks — how to prevent them",
-            "AI governance best practices for healthcare companies",
+            # Problem-aware / high intent
+            "How to stop employees leaking data to ChatGPT",
+            "Shadow AI risks and how to control them in the enterprise",
+            "How to write an enterprise AI usage policy (with template)",
+            "On-premise AI vs cloud AI: which is safer for sensitive data",
+            "How to give employees ChatGPT access without security risk",
+            "AI data loss prevention (DLP): a complete guide for IT teams",
+            "How to detect and block PII before it reaches an AI model",
+            # Compliance angle
+            "HIPAA-compliant AI: how healthcare can use ChatGPT safely",
+            "GDPR and AI: keeping employee AI use compliant in Europe",
+            "AI compliance under India's DPDP Act: what businesses must do",
+            "SOC 2 and AI tools: building an auditable AI workflow",
+            "AI governance for law firms: protecting client confidentiality",
+            # Vertical-specific
+            "AI security for financial services: preventing data exposure",
+            "Protecting trade secrets when manufacturing teams use AI",
+            "AI access control for MSPs managing multiple client environments",
+            "How consulting firms keep client data safe while using AI",
+            # Comparison / decision
+            "Self-hosted LLMs vs API models: a security comparison",
+            "How to choose an enterprise AI gateway: a buyer's checklist",
+            "The real cost of an AI data breach (and how to avoid it)",
         ]
         import random
         return random.choice(topics)

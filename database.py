@@ -98,6 +98,7 @@ class BlogPost(Base):
     title      = Column(String(300))
     content    = Column(Text)
     keywords   = Column(String(300))
+    meta_description = Column(String(320), default="")
     status     = Column(String(50), default="draft")
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -184,6 +185,14 @@ def init_db():
         from agent_memory import AgentMemory, AgentGoal, AgentMessage, AgentReflection
     except: pass
     Base.metadata.create_all(bind=engine)
+    # Safe migration: add meta_description to blog_posts if it doesn't exist yet
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS meta_description VARCHAR(320) DEFAULT ''"))
+            conn.commit()
+    except Exception as e:
+        print(f"[init_db] meta_description migration skipped: {e}")
     db = SessionLocal()
     if not db.query(Metric).first():
         db.add(Metric())

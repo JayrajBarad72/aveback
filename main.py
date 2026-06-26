@@ -440,6 +440,7 @@ def write_blog(req: BlogRequest):
 def get_blog_posts(db: DBSession = Depends(get_db)):
     posts = db.query(BlogPost).order_by(BlogPost.created_at.desc()).all()
     return [{"id":p.id,"title":p.title,"content":p.content,"keywords":p.keywords,
+             "meta_description":getattr(p,"meta_description","") or "",
              "status":p.status,"created_at":str(p.created_at)} for p in posts]
 
 @app.post("/api/blog/{post_id}/publish")

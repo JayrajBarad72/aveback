@@ -196,12 +196,12 @@ Return only JSON.
   <tr><td style="padding:28px 44px 32px">
     <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #F0EEF5;padding-top:26px">
       <tr>
-        <td style="vertical-align:top">
+        <td width="55%" style="vertical-align:top;padding-right:12px;">
           <p style="margin:0;font-size:14px;font-weight:700;color:#16121F">Alex</p>
           <p style="margin:5px 0 4px;font-size:13px;color:#6B6680">SecureAI Gateway | Aventrix Technologies</p>
           <a href="https://aventrixtechnologies.com" style="font-size:13px;color:#7C3AED;text-decoration:none;font-weight:600;">aventrixtechnologies.com</a>
         </td>
-        <td style="vertical-align:top;text-align:right">
+        <td width="45%" style="vertical-align:top;text-align:right;">
           <a href="https://aventrixtechnologies.com/blog.html" style="display:block;font-size:12px;color:#6B6680;text-decoration:none;margin-bottom:8px">Read our Blog</a>
           <a href="https://aventrixtechnologies.com/features.html" style="display:block;font-size:12px;color:#6B6680;text-decoration:none;margin-bottom:8px">Product Features</a>
           <table cellpadding="0" cellspacing="0" border="0" role="presentation" align="right" style="margin:0 0 8px;">

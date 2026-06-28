@@ -404,33 +404,38 @@ class LandingPageAgent(BaseAgent):
         super().__init__("Landing Page Agent", "Marketing")
 
     def generate_landing_page(self, target_industry: str = "enterprise") -> str:
-        prompt = f"""
-Generate a complete, professional HTML landing page for SecureAI Gateway targeting {target_industry} companies.
+        prompt = f"""Generate a complete, professional HTML landing page for SecureAI Gateway targeting {target_industry} companies.
+
+SecureAI Gateway is an on-premise enterprise AI security and DLP platform by Aventrix Technologies. It lets companies give employees Claude, GPT-4o and local AI (Llama, Mistral) with real-time data loss prevention, admin controls, and audit logs. Never claim it has an existing client base.
 
 Requirements:
-- Modern, clean design with CSS included in <style> tags
-- Dark navy (#0A1628) and blue (#378ADD) color scheme
-- Sections: Hero, Pain Points, Features, How It Works, Pricing, CTA, Footer
-- Hero: Bold headline about AI security risk + CTA button "Book a Free Demo"
-- Pain Points: 3 specific problems (data leaks via ChatGPT, uncontrolled AI usage, compliance risk)
-- Features: 6 key features with icons (use emoji)
-- Pricing: 3 tiers (Starter $49, Business $149, Enterprise $399)
-- CTA: "Start Free Trial" form with name + email
-- Mobile responsive
-- Professional fonts (use Google Fonts - Inter)
-- Include JavaScript for smooth scroll
+- Modern, clean dark design. Near-black background (#08080C), cyan accent (#00E5C7), violet accent (#7C3AED), light text (#EDEDF4)
+- Single self-contained HTML file with all CSS in <style> tags in the head
+- Sections in order: Hero, The Shadow AI Problem (3 pain points), Features (6 with emoji icons), How It Works (4 steps), Pricing (3 tiers all showing "Talk to Sales", no dollar amounts), Final CTA, Footer
+- Hero: bold headline about employees using AI unsafely + button "Book a Free Demo" linking to https://calendly.com/aventrixtechnologies-info
+- Pain points: data leaks via ChatGPT, uncontrolled shadow AI usage, compliance/audit risk
+- Use Google Fonts (Inter) via a <link> tag
+- Mobile responsive with a media query
+- Small amount of JavaScript for smooth scroll on anchor links
+- Footer: "By Aventrix Technologies, Ahmedabad, India" and link to https://aventrixtechnologies.com
 
-Return complete HTML file only, starting with <!DOCTYPE html>
-"""
-        result = self.think(prompt)
-        # Strip markdown code fences if present
+Output ONLY the raw HTML, starting exactly with <!DOCTYPE html> and ending with </html>. No markdown, no code fences, no commentary before or after."""
+        result = self.think_long(prompt, max_tokens=8000)
+        # Strip markdown code fences if the model added them anyway
         result = result.strip()
         if result.startswith("```html"):
             result = result[7:]
-        if result.startswith("```"):
+        elif result.startswith("```"):
             result = result[3:]
         if result.endswith("```"):
             result = result[:-3]
+        result = result.strip()
+        # Safety net: if the model returned prose before the doctype, slice from <!DOCTYPE
+        idx = result.find("<!DOCTYPE")
+        if idx == -1:
+            idx = result.find("<!doctype")
+        if idx > 0:
+            result = result[idx:]
         return result.strip()
 
 

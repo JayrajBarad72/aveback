@@ -68,7 +68,7 @@ CRITICAL: Never use em dashes or hyphens in the email body. Write full sentences
 CRITICAL: The signature must be exactly as shown above. Do not add "Team" or change anything.
 
 STRICT RULES:
-- End every email body with this exact line: "Book a 15-minute demo directly: https://calendly.com/aventrixtechnologies-info"
+- End the email body with a short, low-pressure closing question that invites a reply (for example asking if they are open to a quick conversation). Do NOT include any Calendly link or "book a demo" line in the body text; a demo button is added automatically below your text.
 - Never use the word "ensure"
 - Never use "I hope this finds you well" or any variation
 - Never use "I wanted to reach out"

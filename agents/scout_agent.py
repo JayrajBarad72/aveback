@@ -17,6 +17,15 @@ from datetime import datetime
 
 TARGET_COMPANIES = {
     "Legal": [
+        # --- Fresh batch (added to refill pipeline) ---
+        "lewissilkin.com", "kingsleynapley.co.uk", "michelmores.com",
+        "burges-salmon.com", "shoosmiths.com", "trowers.com",
+        "stevens-bolton.com", "wedlakebell.com", "rpc.co.uk",
+        "freeths.co.uk", "millsreeve.com", "tltsolicitors.com",
+        "kennedyslaw.com", "fieldfisher.com",
+        "osborneclarke.com", "wfw.com", "stephenson-harwood.com",
+        "buchalter.com", "nixonpeabody.com", "wsgr.com",
+        "perkinscoie.com", "fenwick.com", "cooley.com",
         # US law firms (50-500 employees)
         "lathropgpm.com", "foxrothschild.com", "fisherphillips.com",
         "grsm.com", "hklaw.com", "bclplaw.com", "seyfarth.com",
@@ -38,6 +47,15 @@ TARGET_COMPANIES = {
         "maddocks.com.au", "corrs.com.au", "mcmillan.ca",
     ],
     "Healthcare": [
+        # --- Fresh batch (added to refill pipeline) ---
+        "circlehealthgroup.co.uk", "nuffieldhealth.com", "practiceplusgroup.com",
+        "onewelbeck.com", "hcahealthcare.co.uk", "kingedwardvii.co.uk",
+        "vita-health.co.uk", "benenden.co.uk", "bupa.com",
+        "medizinische-klinik.de", "rhoen-klinikum-ag.com", "vivantes.de",
+        "korian.com", "orpea.com", "domusvi.com",
+        "attendo.com", "humananamedical.com", "mediclinic.com",
+        "ihhhealthcare.com", "ardenthealth.com", "surgerypartners.com",
+        "uspi.com", "envisionhealth.com",
         # US healthcare SMB
         "teamhealth.com", "concentra.com", "mdvip.com",
         # UK
@@ -58,6 +76,15 @@ TARGET_COMPANIES = {
         "healthscope.com.au", "cabrini.com.au",
     ],
     "Finance": [
+        # --- Fresh batch (added to refill pipeline) ---
+        "marqeta.com", "melio.com", "brex.com",
+        "ramp.com", "mercury.com", "column.com",
+        "modulr.com", "gocardless.com", "wise.com",
+        "zopa.com", "atombank.co.uk", "tandem.co.uk",
+        "n26.com", "scalable.capital", "trade-republic.com",
+        "qonto.com", "swile.co", "spendesk.com",
+        "pleo.io", "lunarway.com", "northmill.com",
+        "banking-circle.com", "rapyd.net", "thoughtmachine.net",
         # US fintech (50-300 employees)
         "kabbage.com", "fundbox.com", "bluevine.com",
         "greensky.com", "avant.com", "ondeck.com",
@@ -81,6 +108,15 @@ TARGET_COMPANIES = {
         "beehive.finance", "liwwa.com",
     ],
     "IT_SMB": [
+        # --- Fresh batch (added to refill pipeline) ---
+        "coretek.com", "dataprise.com", "electric.ai",
+        "framework-it.com", "mindsight.com", "thrivenextgen.com",
+        "anchortech.com", "netgainit.com", "cohesivenetworks.com",
+        "softcat.com", "softwareone.com", "advania.co.uk",
+        "node4.co.uk", "wavenet.co.uk", "cloudm.io",
+        "axians.com", "devoteam.com", "reply.com",
+        "tietoevry.com", "knowit.eu", "netcompany.com",
+        "softwarepoint.com", "nexer.com",
         # US MSP (50-300 employees)
         "ntiva.com", "logically.ai", "clearnetwork.com",
         "stratospherenetworks.com", "cyberfort.com", "arraya.com",
@@ -103,6 +139,15 @@ TARGET_COMPANIES = {
         "compugen.com", "pythian.com",
     ],
     "Consulting": [
+        # --- Fresh batch (added to refill pipeline) ---
+        "alvarezandmarsal.com", "fticonsulting.com", "berkeleyresearchgroup.com",
+        "thinkbrg.com", "northhighland.com", "westmonroe.com",
+        "slalom.com", "publicissapient.com", "elixirr.com",
+        "baringa.com", "newtoneurope.com", "gateone.co.uk",
+        "qcg.de", "horvath-partners.com", "zeb-consulting.com",
+        "simon-kucher.com", "oliverwyman.com", "lek.com",
+        "openhealthgroup.com", "efeso.com", "argon-consult.com",
+        "delta-partners.com",
         # US consulting (50-300 employees)
         "guidehouse.com", "chartis.com", "rsm.com",
         "plante.com", "propellergroup.com",
@@ -124,6 +169,15 @@ TARGET_COMPANIES = {
         "kordamentha.com", "pitcher.com.au",
     ],
     "Manufacturing": [
+        # --- Fresh batch (added to refill pipeline) ---
+        "barnesgroupinc.com", "cirrus-aircraft.com", "moog.com",
+        "curtisswright.com", "esterline.com", "ducommun.com",
+        "renishaw.com", "spectris.com", "morgan-electronics.com",
+        "ricardo.com", "spirax-sarco.com", "rotork.com",
+        "pfeiffer-vacuum.com", "jenoptik.com", "krones.com",
+        "duerr.com", "gea.com", "koerber.com",
+        "interroll.com", "bystronic.com", "georgfischer.com",
+        "vat.ch", "comet-group.com",
         # US mid-size
         "haynes.com", "materion.com", "kaman.com",
         # UK

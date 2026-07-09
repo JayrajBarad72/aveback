@@ -443,7 +443,21 @@ def get_blog_posts(db: DBSession = Depends(get_db)):
              "meta_description":getattr(p,"meta_description","") or "",
              "status":p.status,"created_at":str(p.created_at)} for p in posts]
 
-@app.post("/api/blog/{post_id}/publish")
+@app.put("/api/blog/{post_id}")
+def update_blog(post_id: int, request: Request, db: DBSession = Depends(get_db)):
+    import asyncio
+    data = asyncio.get_event_loop().run_until_complete(request.json())
+    post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
+    if not post:
+        return {"success": False, "error": "Post not found"}
+    if "title" in data: post.title = data["title"]
+    if "content" in data: post.content = data["content"]
+    if "keywords" in data: post.keywords = data["keywords"]
+    if "meta_description" in data: post.meta_description = data["meta_description"]
+    if "status" in data: post.status = data["status"]
+    db.commit()
+    return {"success": True, "id": post_id}
+
 def publish_blog(post_id: int, db: DBSession = Depends(get_db)):
     post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
     if not post:

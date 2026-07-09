@@ -112,6 +112,7 @@ WRITING STYLE (critical — must not read like generic AI):
 - Write like an experienced practitioner talking to a peer, not a marketing bot.
 - Vary sentence length. Use specific, concrete examples (a real-sounding scenario, an actual number, a named regulation).
 - Avoid these AI tells: do NOT start sections with "In today's fast-paced world" or "In the ever-evolving landscape." Do NOT overuse bold sub-labels like "**Key Point:**". Do NOT end with "In conclusion." Do NOT use the words "delve", "leverage", "robust", "seamless", "landscape", "realm", "tapestry".
+- NEVER use em dashes (— or –). Replace with a comma, period, or rewrite the sentence. Em dashes make copy look AI-generated.
 - Have a point of view. It's fine to be a little opinionated.
 - Mention SecureAI Gateway naturally only once or twice, where it genuinely fits — not as a hard sell in every section. The CTA goes at the very end only.
 

@@ -444,9 +444,8 @@ def get_blog_posts(db: DBSession = Depends(get_db)):
              "status":p.status,"created_at":str(p.created_at)} for p in posts]
 
 @app.put("/api/blog/{post_id}")
-def update_blog(post_id: int, request: Request, db: DBSession = Depends(get_db)):
-    import asyncio
-    data = asyncio.get_event_loop().run_until_complete(request.json())
+async def update_blog(post_id: int, request: Request, db: DBSession = Depends(get_db)):
+    data = await request.json()
     post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
     if not post:
         return {"success": False, "error": "Post not found"}

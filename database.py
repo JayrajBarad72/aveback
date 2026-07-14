@@ -136,6 +136,17 @@ class DailyReport(Base):
     demos_booked = Column(Integer, default=0)
     created_at   = Column(DateTime, default=datetime.utcnow)
 
+class AgentConfig(Base):
+    """Dynamic configuration Alex can update — agents read this at runtime.
+    Replaces hardcoded targeting weights, quotas, and strategy flags."""
+    __tablename__ = "agent_config"
+    id         = Column(Integer, primary_key=True)
+    key        = Column(String(100), unique=True, nullable=False)
+    value      = Column(Text, nullable=False)
+    updated_by = Column(String(50), default="system")
+    updated_at = Column(DateTime, default=datetime.utcnow)
+    note       = Column(String(300), default="")
+
 class Metric(Base):
     __tablename__ = "metrics"
     id             = Column(Integer, primary_key=True, index=True)
@@ -228,9 +239,43 @@ def init_db():
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS agent_config (
+                    id SERIAL PRIMARY KEY,
+                    key VARCHAR(100) UNIQUE NOT NULL,
+                    value TEXT NOT NULL,
+                    updated_by VARCHAR(50) DEFAULT 'system',
+                    updated_at TIMESTAMP DEFAULT NOW(),
+                    note VARCHAR(300) DEFAULT ''
+                )
+            """))
             conn.commit()
     except Exception as e:
         print(f"[init_db] migration skipped: {e}")
+
+    # Seed default agent config if not already set
+    db = SessionLocal()
+    try:
+        from database import AgentConfig
+        defaults = [
+            ("scout_industry_quotas", '{"US_Legal":8,"US_Healthcare":7,"Legal":4,"Healthcare":3,"Finance":3,"IT_SMB":3,"Consulting":2,"Manufacturing":2}',
+             "Alex updates this when pivoting market focus. Keys = industry names, values = leads per daily run."),
+            ("scout_market_focus", "US",
+             "Current primary market. Alex changes to EU, India, or Global when data supports it."),
+            ("outreach_daily_limit", "20",
+             "Max emails outreach sends per day."),
+            ("blog_topics_focus", "AI DLP, HIPAA compliance AI, enterprise AI security, ChatGPT data leaks",
+             "Blog agent picks topics aligned with this focus. Alex updates when targeting shifts."),
+        ]
+        for key, value, note in defaults:
+            existing = db.query(AgentConfig).filter(AgentConfig.key == key).first()
+            if not existing:
+                db.add(AgentConfig(key=key, value=value, note=note, updated_by="system"))
+        db.commit()
+    except Exception as e:
+        print(f"[init_db] config seed skipped: {e}")
+    finally:
+        db.close()
     db = SessionLocal()
     if not db.query(Metric).first():
         db.add(Metric())

@@ -408,27 +408,32 @@ Return JSON only: {{"score": 85, "notes": "why they need SecureAI Gateway specif
         return saved
 
     def run_full_scout(self) -> dict:
-        """Full scout cycle — US priority (70%), EU (20%), India (10%) per GA4 signal"""
+        """Full scout cycle — reads industry quotas from AgentConfig so Alex can
+        shift market focus (US/EU/India) without any code changes."""
+        import json as _json
         total_saved = 0
         results = {}
 
-        # US industries get more leads per run (GA4 shows US = top organic market)
-        industry_quotas = {
-            "US_Legal":       8,   # high priority — US organic traffic + HIPAA angle
-            "US_Healthcare":  7,   # high priority — HIPAA compliance urgent
-            "Legal":          4,   # EU/UK legal
-            "Healthcare":     3,   # EU/UK healthcare
-            "Finance":        3,
-            "IT_SMB":         3,
-            "Consulting":     2,
-            "Manufacturing":  2,
-        }
+        # Read targeting quotas from database — Alex can update these anytime
+        try:
+            from database import AgentConfig, SessionLocal as SL
+            cfg_db = SL()
+            cfg = cfg_db.query(AgentConfig).filter(AgentConfig.key == "scout_industry_quotas").first()
+            industry_quotas = _json.loads(cfg.value) if cfg else {}
+            cfg_db.close()
+        except Exception as e:
+            self.log("run_full_scout", f"Config read failed, using defaults: {e}", "error")
+            industry_quotas = {}
+
+        # Fallback defaults if config missing
+        if not industry_quotas:
+            industry_quotas = {k: 3 for k in TARGET_COMPANIES.keys()}
 
         for industry, quota in industry_quotas.items():
             if industry not in TARGET_COMPANIES:
                 continue
             try:
-                leads = self.search_leads(industry, count=quota)
+                leads = self.search_leads(industry, count=int(quota))
                 saved = self.score_and_save_leads(leads, industry)
                 total_saved += saved
                 results[industry] = {"found": len(leads), "saved": saved}

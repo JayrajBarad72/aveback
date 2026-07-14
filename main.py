@@ -5,7 +5,8 @@ from pydantic import BaseModel
 from typing import Optional, List
 from database import (init_db, get_db, Lead, Email, AgentLog, BlogPost, Metric,
                       LeadNote, LeadActivity, FollowUp, Invoice, Expense,
-                      SocialPost, Competitor, User, Session)
+                      SocialPost, Competitor, User, Session, AgentConfig,
+                      ProductIdea, MarketTrend)
 from agents.ceo_agent import CEOAgent
 from agents.scout_agent import ScoutAgent
 from agents.outreach_agent import OutreachAgent
@@ -576,6 +577,32 @@ def analyze_feedback():
 def get_roadmap():
     agent = RnDAgent(); ideas = agent.generate_product_ideas(); agent.close()
     return {"roadmap": sorted(ideas, key=lambda x: {"high":0,"medium":1,"low":2}.get(x.get("priority","low"),2))}
+
+# ── Agent Config (Alex reads/writes targeting strategy) ──
+@app.get("/api/config")
+def get_config(db: DBSession = Depends(get_db)):
+    from database import AgentConfig
+    configs = db.query(AgentConfig).all()
+    return {c.key: {"value": c.value, "note": c.note, "updated_by": c.updated_by,
+                    "updated_at": str(c.updated_at)} for c in configs}
+
+@app.post("/api/config/{key}")
+async def set_config(key: str, request: Request, db: DBSession = Depends(get_db)):
+    from database import AgentConfig
+    data = await request.json()
+    value = str(data.get("value", ""))
+    note = data.get("note", "")
+    updated_by = data.get("updated_by", "Alex")
+    existing = db.query(AgentConfig).filter(AgentConfig.key == key).first()
+    if existing:
+        existing.value = value
+        existing.updated_by = updated_by
+        existing.updated_at = __import__("datetime").datetime.utcnow()
+        if note: existing.note = note
+    else:
+        db.add(AgentConfig(key=key, value=value, note=note, updated_by=updated_by))
+    db.commit()
+    return {"success": True, "key": key, "value": value}
 
 # ── Google Analytics 4 ───────────────────────────────────
 @app.get("/api/analytics/website")

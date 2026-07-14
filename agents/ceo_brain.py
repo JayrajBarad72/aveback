@@ -171,6 +171,14 @@ TODAY'S DATE: {datetime.utcnow().strftime('%A, %B %d, %Y')}
         except Exception as e:
             ga_summary = f"GA4 unavailable: {str(e)[:80]}"
 
+        # ── 1d. Read current agent config so Alex knows current strategy ──
+        try:
+            from database import AgentConfig
+            all_configs = db.query(AgentConfig).all()
+            current_config = {c.key: c.value for c in all_configs}
+        except Exception:
+            current_config = {}
+
         company_state = {
             "total_leads": total_leads,
             "new_leads": new_leads,
@@ -189,10 +197,14 @@ TODAY'S DATE: {datetime.utcnow().strftime('%A, %B %d, %Y')}
         # ── 2. Strategic analysis ─────────────────────────
         analysis_prompt = f"""
 Analyze our company state and decide today's strategy.
-You have access to sales metrics, R&D intelligence, AND real website visitor data from Google Analytics. Use all three.
+You have access to sales metrics, R&D intelligence, real website visitor data, AND current agent configuration.
+Use all four. You can recommend config changes and they will be applied automatically.
 
 METRICS:
 {json.dumps(company_state, indent=2)}
+
+CURRENT AGENT CONFIG (what agents are doing right now):
+{json.dumps(current_config, indent=2)}
 
 R&D INTELLIGENCE SUMMARY:
 - Top product ideas: {json.dumps(rnd_intel.get('product_ideas', []), indent=2)}
@@ -209,8 +221,9 @@ Answer these as CEO:
 3. Which agent needs the most focus today?
 4. Any red flags I should escalate to Jayraj?
 5. What worked well yesterday I should repeat?
-6. What does R&D intelligence tell us we should do differently in outreach or product this week?
-7. What do the website analytics tell us? Are high-intent visitors (pricing/contact page) matching our outreach targets?
+6. What does R&D intelligence tell us we should do differently?
+7. What do website analytics tell us about visitor intent and market fit?
+8. Should we change scout_industry_quotas or scout_market_focus based on the data? If yes, provide the new JSON value.
 
 Return JSON:
 {{
@@ -221,7 +234,10 @@ Return JSON:
   "escalate_to_jayraj": false,
   "escalation_reason": "",
   "confidence": 0.85,
-  "win_of_the_day": "any positive metric or trend"
+  "win_of_the_day": "any positive metric or trend",
+  "update_scout_industry_quotas": null,
+  "update_scout_market_focus": null,
+  "update_blog_topics_focus": null
 }}
 Return only JSON.
 """
@@ -233,6 +249,26 @@ Return only JSON.
                        "action_items": [], "escalate_to_jayraj": False, "confidence": 0.5}
 
         results["analysis"] = analysis
+
+        # Auto-apply config changes if Alex recommends a pivot
+        try:
+            from database import AgentConfig
+            for config_key in ["scout_industry_quotas", "scout_market_focus",
+                               "outreach_daily_limit", "blog_topics_focus"]:
+                new_val = analysis.get(f"update_{config_key}")
+                if new_val:
+                    existing = db.query(AgentConfig).filter(AgentConfig.key == config_key).first()
+                    val_str = json.dumps(new_val) if isinstance(new_val, dict) else str(new_val)
+                    if existing:
+                        existing.value = val_str
+                        existing.updated_by = "Alex (auto)"
+                        existing.updated_at = datetime.utcnow()
+                    else:
+                        db.add(AgentConfig(key=config_key, value=val_str, updated_by="Alex (auto)"))
+                    db.commit()
+                    self.log("config_update", f"Alex auto-updated {config_key}: {val_str[:80]}")
+        except Exception as e:
+            self.log("config_update", f"Config update failed: {str(e)[:100]}", "error")
 
         # ── 3. Generate briefing ──────────────────────────
         briefing_prompt = f"""

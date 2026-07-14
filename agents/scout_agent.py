@@ -16,6 +16,29 @@ from datetime import datetime
 # Industries: Any company handling sensitive data
 
 TARGET_COMPANIES = {
+    "US_Legal": [
+        # --- US Law Firms (NY, CA, TX, IL priority) ---
+        "weil.com", "paulweiss.com", "skadden.com", "kirkland.com",
+        "latham.com", "gibsondunn.com", "morganlewis.com", "dlapiper.com",
+        "bakermckenzie.com", "jonesday.com", "sidley.com", "winston.com",
+        "mwe.com", "katten.com", "mcguirewoods.com", "foley.com",
+        "hklaw.com", "ballardspahr.com", "dykema.com", "dickinson-wright.com",
+        "honigman.com", "varnum.com", "miller.law", "butzel.com",
+        "maynardnexsen.com", "burr.com", "bradley.com", "lightfootlaw.com",
+        "balch.com", "grayrobinson.com", "carltonfields.com", "trenam.com",
+    ],
+    "US_Healthcare": [
+        # --- US Healthcare / Health IT (HIPAA angle) ---
+        "amerihealth.com", "highmark.com", "bcbs.com", "carefirst.com",
+        "centene.com", "molina.com", "uhc.com", "cigna.com",
+        "hma.com", "lifepointclinton.com", "prime-healthcare.com",
+        "capella-healthcare.com", "acadia-healthcare.com", "amsurg.com",
+        "envisionhealth.com", "nuvancehealth.org", "rwjbh.org",
+        "beaumont.org", "trihealth.com", "ohiohealth.com",
+        "advocate-aurora.org", "prismahealth.org", "baptisthealth.com",
+        "medstar.net", "inova.org", "vhc.org", "novant.org",
+        "wellstar.org", "atrium.org", "thedacare.org",
+    ],
     "Legal": [
         # --- Fresh batch (added to refill pipeline) ---
         "lewissilkin.com", "kingsleynapley.co.uk", "michelmores.com",
@@ -385,13 +408,27 @@ Return JSON only: {{"score": 85, "notes": "why they need SecureAI Gateway specif
         return saved
 
     def run_full_scout(self) -> dict:
-        """Full scout cycle — all industries"""
+        """Full scout cycle — US priority (70%), EU (20%), India (10%) per GA4 signal"""
         total_saved = 0
         results = {}
 
-        for industry in TARGET_COMPANIES.keys():
+        # US industries get more leads per run (GA4 shows US = top organic market)
+        industry_quotas = {
+            "US_Legal":       8,   # high priority — US organic traffic + HIPAA angle
+            "US_Healthcare":  7,   # high priority — HIPAA compliance urgent
+            "Legal":          4,   # EU/UK legal
+            "Healthcare":     3,   # EU/UK healthcare
+            "Finance":        3,
+            "IT_SMB":         3,
+            "Consulting":     2,
+            "Manufacturing":  2,
+        }
+
+        for industry, quota in industry_quotas.items():
+            if industry not in TARGET_COMPANIES:
+                continue
             try:
-                leads = self.search_leads(industry, count=5)
+                leads = self.search_leads(industry, count=quota)
                 saved = self.score_and_save_leads(leads, industry)
                 total_saved += saved
                 results[industry] = {"found": len(leads), "saved": saved}

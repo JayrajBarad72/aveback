@@ -26,6 +26,21 @@ class OutreachAgent(BaseAgent):
         company = lead.get("company", "")
         notes = lead.get("notes", "")
 
+        # US-specific compliance angle based on GA4 signal (US = top organic market)
+        us_industries = ["US_Legal", "US_Healthcare"]
+        is_us = country in ["United States", "US", "USA"] or industry in us_industries
+        compliance_context = ""
+        if is_us and "Legal" in industry:
+            compliance_context = "US legal compliance context: ABA Model Rule 1.6 requires lawyers to protect client confidentiality including when using technology. State bar ethics opinions increasingly address AI tool usage. Law firm malpractice insurers now ask about AI governance. Lead with attorney-client privilege and bar compliance, not GDPR."
+        elif is_us and ("Healthcare" in industry or "Health" in industry):
+            compliance_context = "US healthcare compliance context: HIPAA Breach Notification Rule — any AI tool that processes PHI must have a BAA. HHS OCR has issued guidance on AI and HIPAA. Recent examples: Change Healthcare breach ($22M ransom), Anthem ($16M HIPAA settlement). Lead with HIPAA fines and OCR enforcement, not GDPR."
+        elif is_us and "Finance" in industry:
+            compliance_context = "US finance compliance context: SEC has issued AI governance guidance for financial firms. FINRA Rule 3110 requires supervision of AI-assisted communications. FTC Act Section 5 covers AI-related unfair practices. Lead with SEC/FINRA enforcement and fiduciary duty, not GDPR."
+        elif is_us:
+            compliance_context = "US market context: Lead with FTC data privacy enforcement, state privacy laws (CCPA, CPRA), and sector-specific regulations. Do NOT mention GDPR — that is European. Reference recent US AI incidents and enforcement actions."
+        else:
+            compliance_context = "EU/UK/India context: GDPR Article 32 (security of processing), India DPDP Act 2023, ICO enforcement. Reference relevant regional compliance."
+
         prompt = f"""You are Alex, a sales rep for SecureAI Gateway - an on-premise AI security platform.
 
 Write a cold outreach email to this specific person:
@@ -36,6 +51,9 @@ Company: {company}
 Industry: {industry}
 Country: {country}
 What we know about them: {notes}
+
+COMPLIANCE & REGULATORY CONTEXT (use this, do not use regulations from other regions):
+{compliance_context}
 
 Your job: Write an email that feels like it was written SPECIFICALLY for this person.
 Not a template. Not a generic pitch. A real email from one professional to another.

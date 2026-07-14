@@ -266,9 +266,29 @@ Return only JSON.
         try:
             clean = result.replace("```json","").replace("```","").strip()
             competitors = json.loads(clean)
-            self.log("research_competitors", f"Found {len(competitors)} competitors")
+            # Save to database (upsert by name)
+            from database import Competitor, SessionLocal
+            db = SessionLocal()
+            for c in competitors:
+                existing = db.query(Competitor).filter(Competitor.name == c.get("name","")).first()
+                if existing:
+                    existing.features = c.get("features","")
+                    existing.pricing = c.get("pricing","")
+                    existing.weakness = c.get("weakness","")
+                    existing.updated_at = __import__("datetime").datetime.utcnow()
+                else:
+                    db.add(Competitor(
+                        name=c.get("name",""),
+                        features=c.get("features",""),
+                        pricing=c.get("pricing",""),
+                        weakness=c.get("weakness","")
+                    ))
+            db.commit()
+            db.close()
+            self.log("research_competitors", f"Saved {len(competitors)} competitors to DB")
             return competitors
-        except:
+        except Exception as e:
+            self.log("research_competitors", f"Error: {str(e)[:100]}", "error")
             return []
 
     def generate_product_ideas(self) -> list:
@@ -281,7 +301,20 @@ Return only JSON.
         try:
             clean = result.replace("```json","").replace("```","").strip()
             ideas = json.loads(clean)
-            self.log("generate_product_ideas", f"Generated {len(ideas)} ideas")
+            # Save to database (keep history, don't overwrite)
+            from database import ProductIdea, SessionLocal
+            db = SessionLocal()
+            for idea in ideas:
+                db.add(ProductIdea(
+                    idea=idea.get("idea",""),
+                    priority=idea.get("priority","medium"),
+                    reason=idea.get("reason",""),
+                    effort=idea.get("effort","medium")
+                ))
+            db.commit()
+            db.close()
+            self.log("generate_product_ideas", f"Saved {len(ideas)} ideas to DB")
             return ideas
-        except:
+        except Exception as e:
+            self.log("generate_product_ideas", f"Error: {str(e)[:100]}", "error")
             return []

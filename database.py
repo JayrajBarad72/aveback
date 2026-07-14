@@ -180,6 +180,24 @@ class Competitor(Base):
     weakness   = Column(Text)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
+class ProductIdea(Base):
+    __tablename__ = "product_ideas"
+    id         = Column(Integer, primary_key=True)
+    idea       = Column(Text)
+    priority   = Column(String(20))
+    reason     = Column(Text)
+    effort     = Column(String(20))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class MarketTrend(Base):
+    __tablename__ = "market_trends"
+    id              = Column(Integer, primary_key=True)
+    summary         = Column(Text)
+    key_incidents   = Column(Text)
+    opportunities   = Column(Text)
+    regulatory      = Column(Text)
+    created_at      = Column(DateTime, default=datetime.utcnow)
+
 def init_db():
     try:
         from agent_memory import AgentMemory, AgentGoal, AgentMessage, AgentReflection
@@ -190,9 +208,29 @@ def init_db():
         from sqlalchemy import text
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS meta_description VARCHAR(320) DEFAULT ''"))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS product_ideas (
+                    id SERIAL PRIMARY KEY,
+                    idea TEXT,
+                    priority VARCHAR(20),
+                    reason TEXT,
+                    effort VARCHAR(20),
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS market_trends (
+                    id SERIAL PRIMARY KEY,
+                    summary TEXT,
+                    key_incidents TEXT,
+                    opportunities TEXT,
+                    regulatory TEXT,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """))
             conn.commit()
     except Exception as e:
-        print(f"[init_db] meta_description migration skipped: {e}")
+        print(f"[init_db] migration skipped: {e}")
     db = SessionLocal()
     if not db.query(Metric).first():
         db.add(Metric())

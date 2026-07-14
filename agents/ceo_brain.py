@@ -163,6 +163,14 @@ TODAY'S DATE: {datetime.utcnow().strftime('%A, %B %d, %Y')}
         except Exception as e:
             rnd_intel = {"error": str(e)[:100]}
 
+        # ── 1c. Pull Google Analytics website data ────────
+        ga_summary = ""
+        try:
+            from agents.ga_agent import get_analytics_summary_for_alex
+            ga_summary = get_analytics_summary_for_alex(days=7)
+        except Exception as e:
+            ga_summary = f"GA4 unavailable: {str(e)[:80]}"
+
         company_state = {
             "total_leads": total_leads,
             "new_leads": new_leads,
@@ -181,7 +189,7 @@ TODAY'S DATE: {datetime.utcnow().strftime('%A, %B %d, %Y')}
         # ── 2. Strategic analysis ─────────────────────────
         analysis_prompt = f"""
 Analyze our company state and decide today's strategy.
-You have access to BOTH sales metrics AND R&D intelligence. Use both.
+You have access to sales metrics, R&D intelligence, AND real website visitor data from Google Analytics. Use all three.
 
 METRICS:
 {json.dumps(company_state, indent=2)}
@@ -192,6 +200,9 @@ R&D INTELLIGENCE SUMMARY:
 - Market trend: {rnd_intel.get('market_trend', 'N/A')}
 - Opportunities: {rnd_intel.get('opportunities', 'N/A')}
 
+WEBSITE ANALYTICS (Google Analytics - real visitor data):
+{ga_summary}
+
 Answer these as CEO:
 1. What is our biggest problem RIGHT NOW?
 2. What should we do TODAY to move toward first paying client?
@@ -199,6 +210,7 @@ Answer these as CEO:
 4. Any red flags I should escalate to Jayraj?
 5. What worked well yesterday I should repeat?
 6. What does R&D intelligence tell us we should do differently in outreach or product this week?
+7. What do the website analytics tell us? Are high-intent visitors (pricing/contact page) matching our outreach targets?
 
 Return JSON:
 {{

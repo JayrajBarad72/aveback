@@ -577,6 +577,22 @@ def get_roadmap():
     agent = RnDAgent(); ideas = agent.generate_product_ideas(); agent.close()
     return {"roadmap": sorted(ideas, key=lambda x: {"high":0,"medium":1,"low":2}.get(x.get("priority","low"),2))}
 
+# ── Google Analytics 4 ───────────────────────────────────
+@app.get("/api/analytics/website")
+def get_website_analytics(days: int = 7):
+    from agents.ga_agent import get_website_analytics as fetch
+    return fetch(days)
+
+@app.get("/api/analytics/realtime")
+def get_realtime():
+    from agents.ga_agent import get_realtime_users
+    return get_realtime_users()
+
+@app.get("/api/analytics/summary")
+def get_analytics_summary(days: int = 7):
+    from agents.ga_agent import get_analytics_summary_for_alex
+    return {"summary": get_analytics_summary_for_alex(days)}
+
 # ── Backup ────────────────────────────────────────────────
 @app.post("/api/backup")
 def create_backup():

@@ -147,6 +147,22 @@ TODAY'S DATE: {datetime.utcnow().strftime('%A, %B %d, %Y')}
         mrr = metrics.mrr if metrics else 0
         pipeline = metrics.pipeline_value if metrics else 0
 
+        # ── 1b. Pull latest R&D intelligence ─────────────
+        rnd_intel = {}
+        try:
+            from agents.all_agents import RnDAgent, MarketTrendAgent
+            rnd_agent = RnDAgent()
+            rnd_intel["product_ideas"] = rnd_agent.generate_product_ideas()[:3]
+            rnd_intel["competitors"] = rnd_agent.research_competitors()[:3]
+            rnd_agent.close()
+            trend_agent = MarketTrendAgent()
+            trend_report = trend_agent.generate_trend_report()
+            rnd_intel["market_trend"] = trend_report.get("summary", "")
+            rnd_intel["opportunities"] = trend_report.get("opportunities_for_aventrix", "")
+            trend_agent.close()
+        except Exception as e:
+            rnd_intel = {"error": str(e)[:100]}
+
         company_state = {
             "total_leads": total_leads,
             "new_leads": new_leads,
@@ -158,15 +174,23 @@ TODAY'S DATE: {datetime.utcnow().strftime('%A, %B %d, %Y')}
             "blog_posts": blog_posts,
             "mrr": mrr,
             "pipeline_value": pipeline,
-            "date": datetime.utcnow().strftime("%Y-%m-%d")
+            "date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "rnd_intelligence": rnd_intel
         }
 
         # ── 2. Strategic analysis ─────────────────────────
         analysis_prompt = f"""
-Analyze our company state and decide today's strategy:
+Analyze our company state and decide today's strategy.
+You have access to BOTH sales metrics AND R&D intelligence. Use both.
 
 METRICS:
 {json.dumps(company_state, indent=2)}
+
+R&D INTELLIGENCE SUMMARY:
+- Top product ideas: {json.dumps(rnd_intel.get('product_ideas', []), indent=2)}
+- Competitor intel: {json.dumps(rnd_intel.get('competitors', []), indent=2)}
+- Market trend: {rnd_intel.get('market_trend', 'N/A')}
+- Opportunities: {rnd_intel.get('opportunities', 'N/A')}
 
 Answer these as CEO:
 1. What is our biggest problem RIGHT NOW?
@@ -174,6 +198,7 @@ Answer these as CEO:
 3. Which agent needs the most focus today?
 4. Any red flags I should escalate to Jayraj?
 5. What worked well yesterday I should repeat?
+6. What does R&D intelligence tell us we should do differently in outreach or product this week?
 
 Return JSON:
 {{

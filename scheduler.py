@@ -87,6 +87,24 @@ def blog_writing_job():
     except Exception as e:
         logger.error(f"Blog error: {e}")
 
+def rnd_intelligence_job():
+    """R&D daily intelligence run — competitor research + market trends + product ideas. 8 AM IST = 2:30 AM UTC"""
+    logger.info("R&D: Running daily intelligence cycle...")
+    try:
+        from agents.all_agents import RnDAgent, MarketTrendAgent
+        # Competitor research
+        rnd = RnDAgent()
+        rnd.research_competitors()
+        rnd.generate_product_ideas()
+        rnd.close()
+        # Market trend report
+        trend = MarketTrendAgent()
+        trend.generate_trend_report()
+        trend.close()
+        logger.info("R&D: Intelligence cycle complete")
+    except Exception as e:
+        logger.error(f"R&D error: {e}")
+
 def sales_reflection_job():
     """Sales self-reflection — 6 PM IST"""
     logger.info("Sales: Self-reflecting...")
@@ -135,6 +153,8 @@ def cross_agent_job():
         logger.error(f"Coordinator error: {e}")
 
 def start_scheduler():
+    # R&D Intelligence — 7 AM IST = 1:30 AM UTC (runs before CEO brain so Alex gets fresh data)
+    scheduler.add_job(rnd_intelligence_job, CronTrigger(hour=1, minute=30), id="rnd_intelligence")
     # CEO Full Brain — 8 AM IST = 2:30 AM UTC
     scheduler.add_job(ceo_brain_cycle, CronTrigger(hour=2, minute=30), id="ceo_brain")
     # Lead Generation — 9 AM IST = 3:30 AM UTC
